@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Filtros de TestCode por Proceso</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white p-8">
+    <h1 class="text-2xl font-bold mb-6">🧪 Test - Filtros de TestCode por Proceso</h1>
+    
+    <div class="space-y-8">
+        <!-- Test 1: Verificar que se elimine el filtro global -->
+        <div class="bg-gray-800 p-4 rounded-lg">
+            <h2 class="text-lg font-semibold mb-2">✅ Test 1: Filtro Global Eliminado</h2>
+            <p id="test1-result" class="text-gray-300">Verificando...</p>
+        </div>
+        
+        <!-- Test 2: Verificar que cada proceso tenga su filtro -->
+        <div class="bg-gray-800 p-4 rounded-lg">
+            <h2 class="text-lg font-semibold mb-2">🔍 Test 2: Filtros Individuales</h2>
+            <p id="test2-result" class="text-gray-300">Verificando...</p>
+        </div>
+        
+        <!-- Test 3: Verificar funcionamiento de API -->
+        <div class="bg-gray-800 p-4 rounded-lg">
+            <h2 class="text-lg font-semibold mb-2">🌐 Test 3: Integración con API</h2>
+            <p id="test3-result" class="text-gray-300">Verificando...</p>
+        </div>
+        
+        <!-- Resultado General -->
+        <div class="bg-gray-700 p-4 rounded-lg">
+            <h2 class="text-xl font-bold mb-2">📊 Resultado General</h2>
+            <p id="general-result" class="text-lg">Ejecutando tests...</p>
+        </div>
+    </div>
+    
+    <script>
+        // Test 1: Verificar que el filtro global no exista
+        function test1() {
+            const globalTestcodeBtn = document.getElementById('testcode-filter-btn');
+            const globalTestcodeDropdown = document.getElementById('testcode-filter-dropdown');
+            
+            const result = !globalTestcodeBtn && !globalTestcodeDropdown;
+            document.getElementById('test1-result').textContent = result 
+                ? '✅ PASS: Filtro global de testcode eliminado correctamente'
+                : '❌ FAIL: Filtro global de testcode aún existe';
+            
+            return result;
+        }
+        
+        // Test 2: Verificar estructura de filtros individuales
+        function test2() {
+            const expectedProcesses = ['UCT', 'FODTEST', 'XCVR_LT', 'LCDCAL', 'L2VISION'];
+            let foundFilters = 0;
+            
+            expectedProcesses.forEach(process => {
+                const btn = document.getElementById(`testcode-filter-btn-${process}`);
+                const dropdown = document.getElementById(`testcode-filter-dropdown-${process}`);
+                const container = document.getElementById(`testcode-checkboxes-container-${process}`);
+                
+                if (btn && dropdown && container) {
+                    foundFilters++;
+                }
+            });
+            
+            const result = foundFilters > 0;
+            document.getElementById('test2-result').textContent = result
+                ? `✅ PASS: Encontrados ${foundFilters} filtros individuales de proceso`
+                : '❌ FAIL: No se encontraron filtros individuales';
+            
+            return result;
+        }
+        
+        // Test 3: Verificar módulos cargados
+        function test3() {
+            const modulesLoaded = typeof window.MQS_CHARTS !== 'undefined' && 
+                                typeof window.MQS_FAILURES !== 'undefined' &&
+                                typeof window.MQS_STORAGE !== 'undefined';
+            
+            document.getElementById('test3-result').textContent = modulesLoaded
+                ? '✅ PASS: Módulos JS cargados correctamente'
+                : '❌ FAIL: Faltan módulos JS';
+            
+            return modulesLoaded;
+        }
+        
+        // Ejecutar todos los tests
+        function runAllTests() {
+            const test1Result = test1();
+            const test2Result = test2();
+            const test3Result = test3();
+            
+            const allPassed = test1Result && test2Result && test3Result;
+            const generalResult = document.getElementById('general-result');
+            
+            if (allPassed) {
+                generalResult.textContent = '🎉 TODOS LOS TESTS PASARON - Implementación exitosa';
+                generalResult.className = 'text-lg text-green-400';
+            } else {
+                generalResult.textContent = '⚠️ ALGUNOS TESTS FALLARON - Revisar implementación';
+                generalResult.className = 'text-lg text-yellow-400';
+            }
+        }
+        
+        // Ejecutar tests al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(runAllTests, 500); // Dar tiempo para que carguen los scripts
+        });
+    </script>
+</body>
+</html>

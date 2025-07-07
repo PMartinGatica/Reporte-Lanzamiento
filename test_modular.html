@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Explorer | Reporte de Lanzamiento</title>
+    
+    <!-- Estilos -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Librerías externas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Registrar plugin de Chart.js -->
+    <script>
+        // Función para registrar ChartDataLabels cuando esté disponible
+        function registerChartDataLabels() {
+            if (window.Chart && window.ChartDataLabels) {
+                try {
+                    Chart.register(ChartDataLabels);
+                    console.log('✅ ChartDataLabels registrado exitosamente');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Error al registrar ChartDataLabels:', error);
+                    return false;
+                }
+            } else {
+                console.warn('⚠️ Chart.js o ChartDataLabels no están disponibles aún');
+                return false;
+            }
+        }
+        
+        // Intentar registrar inmediatamente
+        registerChartDataLabels();
+        
+        // También intentar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!registerChartDataLabels()) {
+                // Intentar una vez más después de un pequeño delay
+                setTimeout(registerChartDataLabels, 100);
+            }
+        });
+    </script>
+</head>
+<body class="bg-gray-900 text-white">
+    
+    <!-- Test Header -->
+    <div class="bg-green-900 text-white p-4 text-center">
+        <h1 class="text-2xl font-bold">🧪 TESTING - Correcciones Implementadas</h1>
+        <p class="text-sm mt-2">
+            ✅ Persistencia de filtros | ✅ Upload de imágenes | ✅ Etiquetas en barras Y línea | ✅ Guardado de notas mejorado
+        </p>
+        <div class="mt-2 text-xs bg-green-800 p-2 rounded">
+            <strong>Instrucciones de Testing:</strong><br>
+            1. Selecciona un modelo y fecha, recarga y verifica que se mantienen<br>
+            2. En "Análisis de Procesos", busca "Top 5 Fallas" y prueba escribir en Causas/Acciones<br>
+            3. Sube una imagen y verifica que se guarda<br>
+            4. Verifica que las etiquetas aparecen: <strong>números en el centro de las barras</strong> y <strong>porcentajes arriba de la línea FTY%</strong>
+        </div>
+    </div>
+    
+    <!-- Sección Hero -->
+    <div id="hero" class="h-screen w-full flex flex-col justify-center items-center text-center relative">
+        <div class="video-background">
+            <video autoplay muted loop playsinline>
+                <source src="nice.mp4" type="video/mp4">
+                Tu navegador no soporta el elemento video.
+            </video>
+        </div>
+        <div class="video-overlay"></div>
+        <div class="z-10 p-4">
+            <h1 id="hero-title" class="text-6xl md:text-8xl font-black uppercase tracking-widest">Explorer</h1>
+            <p id="current-date" class="mt-4 text-lg md:text-xl text-gray-300"></p>
+            <p class="mt-2 text-sm md:text-base text-gray-400 uppercase tracking-widest">Reporte de Lanzamiento</p>
+        </div>
+        <a href="#stats-section" class="absolute bottom-10 z-10">
+            <div class="scroll-down-arrow text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+        </a>
+    </div>
+
+    <!-- 1. Estado de línea -->
+    <div id="stats-section" class="min-h-screen bg-gray-900 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="w-full max-w-7xl mx-auto">
+            <h2 class="text-3xl font-bold text-red-500 mb-6">1. Dashboard de Producción</h2>
+            
+            <!-- Filtros -->
+            <div class="mb-6 flex justify-between items-center flex-wrap gap-4">
+                <div class="flex items-center space-x-4">
+                    <label for="model-filter" class="text-white font-medium">Modelo:</label>
+                    <select id="model-filter" class="bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Cargando modelos...</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <label for="date-filter" class="text-white font-medium">Desde fecha:</label>
+                    <select id="date-filter" class="bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Todas las fechas</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <label for="process-filter" class="text-white font-medium">Procesos:</label>
+                    <select id="process-filter" class="bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Todos los procesos</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <label for="testcode-filter" class="text-white font-medium">Testcode:</label>
+                    <input type="text" id="testcode-filter" placeholder="Filtrar testcodes..." class="bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="clear-data-btn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
+                        🗑️ Limpiar Datos Guardados
+                    </button>
+                </div>
+                <div id="loading-indicator" class="hidden flex items-center space-x-2">
+                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Cargando...</span>
+                </div>
+            </div>
+
+            <!-- === CONTENEDOR PARA TARJETAS DE TOTALES Y DIARIAS === -->
+            <div id="cards-container" class="space-y-4">
+                <!-- La tarjeta de resumen total y las tarjetas diarias se generarán aquí por JS -->
+            </div>
+
+            <div class="text-center mt-12">
+                <a href="#reports-section" class="text-indigo-400 hover:text-indigo-300 text-lg">Ver Reportes de Procesos &darr;</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 2. Reportes de Procesos -->
+    <div id="reports-section" class="min-h-screen bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+        <div class="w-full max-w-7xl mx-auto">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-white">2. Análisis de Procesos</h2>
+                <button 
+                    id="download-pdf-btn" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center space-x-2"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    <span>Descargar PDF</span>
+                </button>
+            </div>
+            <div class="space-y-12" id="process-reports-container">
+                <!-- Los reportes se generarán dinámicamente aquí -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 3. Seguimiento de Problemas -->
+    <div id="issues-section" class="min-h-screen bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+        <div class="w-full max-w-7xl mx-auto">
+            <h2 class="text-3xl font-bold text-white mb-8">3. Seguimiento de Problemas</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-400">
+                            <thead class="text-xs text-gray-300 uppercase bg-gray-700">
+                                <tr>
+                                    <th class="px-4 py-3">Producto</th>
+                                    <th class="px-4 py-3">Descripción del Problema</th>
+                                    <th class="px-4 py-3">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="issues-table-body">
+                                <!-- Las filas de problemas se generarán aquí por JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- === MODAL PARA IMAGEN === -->
+    <div id="image-modal" style="display: none;" class="image-modal-overlay">
+        <span id="close-modal" class="image-modal-close">&times;</span>
+        <img id="modal-image" class="image-modal-content" src="" alt="Imagen de Falla">
+    </div>
+
+    <!-- Scripts modulares con verificación de carga -->
+    <script src="js/config.js"></script>
+    <script>
+        console.log('✅ Después de config.js - MQS_CONFIG:', typeof window.MQS_CONFIG !== 'undefined');
+    </script>
+    
+    <script src="js/storage.js"></script>
+    <script>
+        console.log('✅ Después de storage.js - MQS_STORAGE:', typeof window.MQS_STORAGE !== 'undefined');
+    </script>
+    
+    <script src="js/api.js"></script>
+    <script>
+        console.log('✅ Después de api.js - MQS_API:', typeof window.MQS_API !== 'undefined');
+    </script>
+    
+    <script src="js/ui.js"></script>
+    <script>
+        console.log('✅ Después de ui.js - MQS_UI:', typeof window.MQS_UI !== 'undefined');
+    </script>
+    
+    <script src="js/charts.js"></script>
+    <script>
+        console.log('✅ Después de charts.js - MQS_CHARTS:', typeof window.MQS_CHARTS !== 'undefined');
+    </script>
+    
+    <script src="js/filters.js"></script>
+    <script>
+        console.log('✅ Después de filters.js - MQS_FILTERS:', typeof window.MQS_FILTERS !== 'undefined');
+    </script>
+    
+    <script src="js/issues.js"></script>
+    <script>
+        console.log('✅ Después de issues.js - MQS_ISSUES:', typeof window.MQS_ISSUES !== 'undefined');
+    </script>
+    
+    <script src="js/failures.js"></script>
+    <script>
+        console.log('✅ Después de failures.js - MQS_FAILURES:', typeof window.MQS_FAILURES !== 'undefined');
+    </script>
+    
+    <script src="js/pdf.js"></script>
+    <script>
+        console.log('✅ Después de pdf.js - MQS_PDF:', typeof window.MQS_PDF !== 'undefined');
+    </script>
+    
+    <!-- main.js debe ir al final -->
+    <script src="js/main.js"></script>
+    
+    <!-- Debug script -->
+    <script>
+        // Verificar que todas las dependencias están cargadas
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🧪 [TEST] Verificando módulos cargados:');
+            const modules = ['MQS_CONFIG', 'MQS_STORAGE', 'MQS_API', 'MQS_UI', 'MQS_CHARTS', 'MQS_FILTERS', 'MQS_ISSUES', 'MQS_FAILURES', 'MQS_PDF'];
+            modules.forEach(module => {
+                const loaded = typeof window[module] !== 'undefined';
+                console.log(`${loaded ? '✅' : '❌'} ${module}: ${loaded ? 'CARGADO' : 'NO ENCONTRADO'}`);
+            });
+            
+            // Monitorear localStorage para testing
+            console.log('🧪 [TEST] Estado actual del localStorage:');
+            const storageKeys = ['mqs_state', 'mqs_failure_notes', 'mqs_failure_images', 'mqs_issues'];
+            storageKeys.forEach(key => {
+                const value = localStorage.getItem(key);
+                console.log(`📦 ${key}:`, value ? JSON.parse(value) : 'No guardado');
+            });
+            
+            // Función de debug global para inspeccionar datos
+            window.debugStorage = function() {
+                console.log('🔍 [DEBUG] Estado completo del Storage:');
+                if (window.MQS_STORAGE) {
+                    console.log('- Datos manuales:', MQS_STORAGE.manualData);
+                    console.log('- Notas de fallas:', MQS_STORAGE.failureNotes);
+                    console.log('- Imágenes de fallas:', MQS_STORAGE.failureImages);
+                    console.log('- Filtros guardados:', MQS_STORAGE.getSavedFilters());
+                }
+                if (window.MQS_FAILURES) {
+                    console.log('- Notas de fallas (MQS_FAILURES):', MQS_FAILURES.failureNotes);
+                    console.log('- Imágenes de fallas (MQS_FAILURES):', MQS_FAILURES.failureImages);
+                }
+            };
+            
+            console.log('🧪 [TEST] Función debugStorage() disponible en consola');
+        });
+    </script>
+
+</body>
+</html>

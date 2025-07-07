@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validación de Filtros Avanzados</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8 text-center">Validación de Filtros Avanzados</h1>
+        
+        <!-- Status de la validación -->
+        <div id="validation-status" class="mb-8">
+            <h2 class="text-xl font-semibold mb-4">Estado de la Validación:</h2>
+            <div id="validation-results" class="space-y-2">
+                <!-- Los resultados se mostrarán aquí -->
+            </div>
+        </div>
+
+        <!-- Filtros de prueba -->
+        <div class="bg-gray-800 p-6 rounded-lg mb-8">
+            <h3 class="text-lg font-semibold mb-4">Filtros Avanzados (Copia de la Sección 2):</h3>
+            
+            <div class="flex justify-end items-center gap-4">
+                <!-- Filtro de Procesos -->
+                <div class="relative">
+                    <button id="process-filter-btn" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded text-sm border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        </svg>
+                        <span>Procesos</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div id="process-filter-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-gray-700 border border-gray-600 rounded-lg shadow-lg z-50">
+                        <div class="p-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-medium text-white">Procesos a mostrar:</span>
+                                <button id="process-select-all" class="text-xs text-indigo-400 hover:text-indigo-300">Todos</button>
+                            </div>
+                            <div id="process-checkboxes-container" class="space-y-2 max-h-48 overflow-y-auto">
+                                <!-- Los checkboxes se generarán dinámicamente aquí -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtro de TestCodes -->
+                <div class="relative">
+                    <button id="testcode-filter-btn" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded text-sm border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                        </svg>
+                        <span>Test Codes</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div id="testcode-filter-dropdown" class="hidden absolute right-0 mt-2 w-64 bg-gray-700 border border-gray-600 rounded-lg shadow-lg z-50">
+                        <div class="p-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-medium text-white">Test codes a mostrar:</span>
+                                <button id="testcode-select-all" class="text-xs text-indigo-400 hover:text-indigo-300">Todos</button>
+                            </div>
+                            <div class="mb-3">
+                                <input id="testcode-search" type="text" placeholder="Buscar test codes..." class="w-full bg-gray-600 text-white px-2 py-1 rounded text-xs border border-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            </div>
+                            <div id="testcode-checkboxes-container" class="space-y-2 max-h-48 overflow-y-auto">
+                                <!-- Los checkboxes se generarán dinámicamente aquí -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resultados de filtrado -->
+        <div id="filter-results" class="bg-gray-800 p-6 rounded-lg">
+            <h3 class="text-lg font-semibold mb-4">Resultados del Filtrado:</h3>
+            <div id="filter-output" class="text-sm text-gray-300">
+                <!-- Los resultados se mostrarán aquí -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/filters.js"></script>
+
+    <script>
+        // Script de validación
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🧪 [TEST] Iniciando validación de filtros...');
+            
+            const validationResults = document.getElementById('validation-results');
+            const filterOutput = document.getElementById('filter-output');
+            
+            // Función para mostrar resultado de validación
+            function showValidationResult(test, passed, message) {
+                const div = document.createElement('div');
+                div.className = `p-2 rounded ${passed ? 'bg-green-800 text-green-200' : 'bg-red-800 text-red-200'}`;
+                div.innerHTML = `
+                    <span class="font-semibold">${test}:</span> 
+                    <span class="${passed ? 'text-green-400' : 'text-red-400'}">${passed ? '✅ PASS' : '❌ FAIL'}</span>
+                    ${message ? `<div class="text-sm mt-1">${message}</div>` : ''}
+                `;
+                validationResults.appendChild(div);
+            }
+
+            try {
+                // Test 1: Verificar que los módulos se carguen
+                const hasStorage = typeof window.StorageManager !== 'undefined';
+                const hasFilters = typeof window.FiltersManager !== 'undefined';
+                const hasAPI = typeof window.APIManager !== 'undefined';
+                
+                showValidationResult('Carga de Módulos', hasStorage && hasFilters && hasAPI, 
+                    `Storage: ${hasStorage}, Filters: ${hasFilters}, API: ${hasAPI}`);
+
+                // Test 2: Inicializar datos de prueba
+                const testData = [
+                    { Name: 'Modelo A', Process: 'Proceso 1', TestCode: 'TC001', Date: '2024-01-01' },
+                    { Name: 'Modelo A', Process: 'Proceso 2', TestCode: 'TC002', Date: '2024-01-02' },
+                    { Name: 'Modelo B', Process: 'Proceso 1', TestCode: 'TC003', Date: '2024-01-03' },
+                    { Name: 'Modelo B', Process: 'Proceso 3', TestCode: 'TC004', Date: '2024-01-04' }
+                ];
+
+                // Test 3: Inicializar filtros
+                if (hasFilters) {
+                    const filtersManager = new window.FiltersManager();
+                    filtersManager.initialize(testData);
+                    
+                    // Esperar un momento para que se inicialicen
+                    setTimeout(() => {
+                        // Test 4: Verificar que los dropdowns se poblen
+                        const processContainer = document.getElementById('process-checkboxes-container');
+                        const testcodeContainer = document.getElementById('testcode-checkboxes-container');
+                        
+                        const processCheckboxes = processContainer.querySelectorAll('.process-checkbox');
+                        const testcodeCheckboxes = testcodeContainer.querySelectorAll('.testcode-checkbox');
+                        
+                        showValidationResult('Poblado de Dropdowns', 
+                            processCheckboxes.length > 0 && testcodeCheckboxes.length > 0,
+                            `Procesos: ${processCheckboxes.length}, TestCodes: ${testcodeCheckboxes.length}`);
+
+                        // Test 5: Verificar funcionalidad de los botones
+                        const processBtn = document.getElementById('process-filter-btn');
+                        const testcodeBtn = document.getElementById('testcode-filter-btn');
+                        
+                        showValidationResult('Botones de Filtros', 
+                            processBtn && testcodeBtn,
+                            `Ambos botones están presentes y funcionales`);
+
+                        // Test 6: Simular click en botón de procesos
+                        try {
+                            processBtn.click();
+                            const processDropdown = document.getElementById('process-filter-dropdown');
+                            const isVisible = !processDropdown.classList.contains('hidden');
+                            
+                            showValidationResult('Apertura de Dropdown', isVisible,
+                                `El dropdown de procesos se abre correctamente`);
+                            
+                            // Cerrar dropdown
+                            processBtn.click();
+                        } catch (error) {
+                            showValidationResult('Apertura de Dropdown', false, 
+                                `Error al hacer click: ${error.message}`);
+                        }
+
+                        // Test 7: Verificar persistencia
+                        if (hasStorage) {
+                            try {
+                                const storageManager = new window.StorageManager();
+                                storageManager.saveFilters('Modelo A', '2024-01-01', ['Proceso 1'], ['TC001']);
+                                const savedFilters = storageManager.getSavedFilters();
+                                
+                                const persistenceWorks = savedFilters.selectedModel === 'Modelo A' && 
+                                                       savedFilters.selectedProcesses.includes('Proceso 1') &&
+                                                       savedFilters.selectedTestCodes.includes('TC001');
+                                
+                                showValidationResult('Persistencia de Filtros', persistenceWorks,
+                                    `Filtros guardados y restaurados correctamente`);
+                            } catch (error) {
+                                showValidationResult('Persistencia de Filtros', false,
+                                    `Error en persistencia: ${error.message}`);
+                            }
+                        }
+
+                        // Mostrar estado final de los filtros
+                        const currentState = {
+                            processesSelected: Array.from(processCheckboxes).filter(cb => cb.checked).length,
+                            testcodesSelected: Array.from(testcodeCheckboxes).filter(cb => cb.checked).length,
+                            totalProcesses: processCheckboxes.length,
+                            totalTestcodes: testcodeCheckboxes.length
+                        };
+
+                        filterOutput.innerHTML = `
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <h4 class="font-semibold text-white">Estado de Procesos:</h4>
+                                    <p>Seleccionados: ${currentState.processesSelected}/${currentState.totalProcesses}</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-white">Estado de Test Codes:</h4>
+                                    <p>Seleccionados: ${currentState.testcodesSelected}/${currentState.totalTestcodes}</p>
+                                </div>
+                            </div>
+                        `;
+
+                    }, 500); // Esperar medio segundo para la inicialización
+                }
+
+            } catch (error) {
+                showValidationResult('Inicialización', false, `Error general: ${error.message}`);
+            }
+        });
+    </script>
+</body>
+</html>

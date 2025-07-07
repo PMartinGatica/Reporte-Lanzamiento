@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Filtros - MQS Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .test-section { 
+            border: 2px solid #374151; 
+            border-radius: 8px; 
+            padding: 1rem; 
+            margin: 1rem 0; 
+            background: #1f2937; 
+        }
+        .test-result { 
+            padding: 0.5rem; 
+            margin: 0.5rem 0; 
+            border-radius: 4px; 
+        }
+        .test-pass { background-color: #065f46; color: #d1fae5; }
+        .test-fail { background-color: #7f1d1d; color: #fed7d7; }
+        .test-info { background-color: #1e3a8a; color: #dbeafe; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-4xl font-bold text-center mb-8">🧪 Test de Filtros Avanzados</h1>
+        
+        <!-- Filtros de Test -->
+        <div class="test-section">
+            <h2 class="text-2xl font-bold mb-4">Filtros Disponibles</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Proceso:</label>
+                    <select id="process-filter" class="w-full bg-gray-800 text-white px-4 py-2 rounded border border-gray-600">
+                        <option value="">Todos los procesos</option>
+                        <option value="UCT">UCT</option>
+                        <option value="FOD">FOD</option>
+                        <option value="LCD">LCD</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Test Code:</label>
+                    <select id="testcode-filter" class="w-full bg-gray-800 text-white px-4 py-2 rounded border border-gray-600">
+                        <option value="">Todos los test codes</option>
+                        <option value="UCT_FAIL_001">UCT_FAIL_001</option>
+                        <option value="FOD_FAIL_001">FOD_FAIL_001</option>
+                        <option value="LCD_FAIL_001">LCD_FAIL_001</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-4">
+                <button id="reset-filters-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                    🔄 Resetear Filtros
+                </button>
+                <button id="apply-filters-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded ml-2">
+                    ✅ Aplicar Filtros
+                </button>
+            </div>
+        </div>
+
+        <!-- Datos de Ejemplo -->
+        <div class="test-section">
+            <h2 class="text-2xl font-bold mb-4">Datos de Ejemplo</h2>
+            <div id="sample-data" class="bg-gray-800 p-4 rounded overflow-x-auto">
+                <pre id="data-display" class="text-sm text-green-400"></pre>
+            </div>
+        </div>
+
+        <!-- Resultados de Filtrado -->
+        <div class="test-section">
+            <h2 class="text-2xl font-bold mb-4">Resultados de Filtrado</h2>
+            <div id="filter-results" class="space-y-2">
+                <!-- Los resultados aparecerán aquí -->
+            </div>
+        </div>
+
+        <!-- Tests Automáticos -->
+        <div class="test-section">
+            <h2 class="text-2xl font-bold mb-4">Tests Automáticos</h2>
+            <button id="run-tests-btn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded font-semibold">
+                🚀 Ejecutar Tests
+            </button>
+            <div id="test-results" class="mt-4 space-y-2">
+                <!-- Los resultados de los tests aparecerán aquí -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Datos de ejemplo para testing
+        const sampleData = [
+            { Name: 'TestModel1', Date: '2024-01-01', Process: 'UCT', TestCode: 'UCT_FAIL_001', value: 100 },
+            { Name: 'TestModel1', Date: '2024-01-01', Process: 'UCT', TestCode: 'UCT_FAIL_002', value: 150 },
+            { Name: 'TestModel1', Date: '2024-01-01', Process: 'FOD', TestCode: 'FOD_FAIL_001', value: 200 },
+            { Name: 'TestModel1', Date: '2024-01-01', Process: 'FOD', TestCode: 'FOD_FAIL_002', value: 175 },
+            { Name: 'TestModel1', Date: '2024-01-01', Process: 'LCD', TestCode: 'LCD_FAIL_001', value: 125 },
+            { Name: 'TestModel2', Date: '2024-01-02', Process: 'UCT', TestCode: 'UCT_FAIL_001', value: 80 },
+            { Name: 'TestModel2', Date: '2024-01-02', Process: 'FOD', TestCode: 'FOD_FAIL_001', value: 90 },
+            { Name: 'TestModel2', Date: '2024-01-02', Process: 'LCD', TestCode: 'LCD_FAIL_001', value: 110 }
+        ];
+
+        let filteredData = [...sampleData];
+
+        // Mostrar datos de ejemplo
+        document.getElementById('data-display').textContent = JSON.stringify(sampleData, null, 2);
+
+        // Función de filtrado
+        function applyFilters() {
+            const processFilter = document.getElementById('process-filter').value;
+            const testcodeFilter = document.getElementById('testcode-filter').value;
+
+            console.log('🔍 Aplicando filtros:', { process: processFilter, testcode: testcodeFilter });
+
+            filteredData = sampleData.filter(item => {
+                const matchesProcess = !processFilter || item.Process === processFilter;
+                const matchesTestCode = !testcodeFilter || item.TestCode === testcodeFilter;
+                return matchesProcess && matchesTestCode;
+            });
+
+            displayFilterResults();
+        }
+
+        // Mostrar resultados de filtrado
+        function displayFilterResults() {
+            const resultsContainer = document.getElementById('filter-results');
+            
+            if (filteredData.length === 0) {
+                resultsContainer.innerHTML = '<div class="test-fail">❌ No se encontraron datos que coincidan con los filtros</div>';
+                return;
+            }
+
+            const processFilter = document.getElementById('process-filter').value;
+            const testcodeFilter = document.getElementById('testcode-filter').value;
+            
+            let html = `<div class="test-info">📊 Datos filtrados: ${filteredData.length} de ${sampleData.length} registros</div>`;
+            
+            if (processFilter) {
+                html += `<div class="test-info">🔍 Filtro de proceso: ${processFilter}</div>`;
+            }
+            
+            if (testcodeFilter) {
+                html += `<div class="test-info">🔍 Filtro de testcode: ${testcodeFilter}</div>`;
+            }
+
+            html += '<div class="bg-gray-800 p-4 rounded mt-4 overflow-x-auto">';
+            html += '<pre class="text-sm text-yellow-400">' + JSON.stringify(filteredData, null, 2) + '</pre>';
+            html += '</div>';
+
+            resultsContainer.innerHTML = html;
+        }
+
+        // Resetear filtros
+        function resetFilters() {
+            document.getElementById('process-filter').value = '';
+            document.getElementById('testcode-filter').value = '';
+            filteredData = [...sampleData];
+            displayFilterResults();
+        }
+
+        // Tests automáticos
+        function runTests() {
+            const testResults = document.getElementById('test-results');
+            let html = '';
+
+            // Test 1: Filtro por proceso
+            document.getElementById('process-filter').value = 'UCT';
+            document.getElementById('testcode-filter').value = '';
+            applyFilters();
+            const uctResults = filteredData.length;
+            const uctExpected = sampleData.filter(item => item.Process === 'UCT').length;
+            html += uctResults === uctExpected 
+                ? '<div class="test-pass">✅ Test 1: Filtro por proceso UCT - PASÓ</div>'
+                : `<div class="test-fail">❌ Test 1: Filtro por proceso UCT - FALLÓ (esperado: ${uctExpected}, obtenido: ${uctResults})</div>`;
+
+            // Test 2: Filtro por testcode
+            document.getElementById('process-filter').value = '';
+            document.getElementById('testcode-filter').value = 'UCT_FAIL_001';
+            applyFilters();
+            const testcodeResults = filteredData.length;
+            const testcodeExpected = sampleData.filter(item => item.TestCode === 'UCT_FAIL_001').length;
+            html += testcodeResults === testcodeExpected 
+                ? '<div class="test-pass">✅ Test 2: Filtro por testcode UCT_FAIL_001 - PASÓ</div>'
+                : `<div class="test-fail">❌ Test 2: Filtro por testcode UCT_FAIL_001 - FALLÓ (esperado: ${testcodeExpected}, obtenido: ${testcodeResults})</div>`;
+
+            // Test 3: Filtros combinados
+            document.getElementById('process-filter').value = 'FOD';
+            document.getElementById('testcode-filter').value = 'FOD_FAIL_001';
+            applyFilters();
+            const combinedResults = filteredData.length;
+            const combinedExpected = sampleData.filter(item => item.Process === 'FOD' && item.TestCode === 'FOD_FAIL_001').length;
+            html += combinedResults === combinedExpected 
+                ? '<div class="test-pass">✅ Test 3: Filtros combinados (FOD + FOD_FAIL_001) - PASÓ</div>'
+                : `<div class="test-fail">❌ Test 3: Filtros combinados - FALLÓ (esperado: ${combinedExpected}, obtenido: ${combinedResults})</div>`;
+
+            // Test 4: Reset de filtros
+            resetFilters();
+            const resetResults = filteredData.length;
+            const resetExpected = sampleData.length;
+            html += resetResults === resetExpected 
+                ? '<div class="test-pass">✅ Test 4: Reset de filtros - PASÓ</div>'
+                : `<div class="test-fail">❌ Test 4: Reset de filtros - FALLÓ (esperado: ${resetExpected}, obtenido: ${resetResults})</div>`;
+
+            testResults.innerHTML = html;
+        }
+
+        // Event listeners
+        document.getElementById('apply-filters-btn').addEventListener('click', applyFilters);
+        document.getElementById('reset-filters-btn').addEventListener('click', resetFilters);
+        document.getElementById('run-tests-btn').addEventListener('click', runTests);
+        document.getElementById('process-filter').addEventListener('change', applyFilters);
+        document.getElementById('testcode-filter').addEventListener('change', applyFilters);
+
+        // Inicializar
+        displayFilterResults();
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+    "liveServer.settings.port": 5501,
+    "liveServer.settings.proxy": {
+        "enable": true,
+        "baseUri": "/gs/macros/s/",
+        "proxyUri": "https://script.google.com/macros/s/"
+    },
+    "liveServer.settings.root": "/",
+    "liveServer.settings.CustomBrowser": "chrome",
+    "liveServer.settings.donotShowInfoMsg": true,
+    "liveServer.settings.donotVerifyTags": true,
+    "liveServer.settings.file": "index_modular.html"
+}
