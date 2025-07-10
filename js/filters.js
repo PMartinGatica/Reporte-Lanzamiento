@@ -41,7 +41,7 @@
                 return;
             }
 
-            // CAMBIAR ESTA LÍNEA: de item.Name a item.Family
+            // Usar Family en vez de Name para el filtro de modelos
             const uniqueModels = [...new Set(this.allData.map(item => item.Family).filter(Boolean))];
             this.console.log('🔍 [FILTERS] Modelos únicos encontrados:', uniqueModels);
 
@@ -204,7 +204,7 @@
             
             let filteredData = [...this.allData];
 
-            // Filtro de modelo - CAMBIAR ESTA LÍNEA: de item.Name a item.Family
+            // Filtro de modelo usando Family
             if (modelFilter && modelFilter.value) {
                 filteredData = filteredData.filter(item => item.Family === modelFilter.value);
                 this.console.log('🔍 [FILTERS] Filtro de modelo aplicado:', modelFilter.value);

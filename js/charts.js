@@ -48,7 +48,15 @@
 
             container.innerHTML = '';
 
-            const processesWithData = [...new Set(data.map(item => item.Process).filter(Boolean))];
+            // Orden específico de procesos solicitado
+            const processOrder = ['IFLASH', 'UCT', 'FODTEST', 'XCVR_RT', 'XCVR_LT', 'LCDCAL', 'L2VISION', 'L2AR', 'CFC'];
+            const availableProcesses = [...new Set(data.map(item => item.Process).filter(Boolean))];
+            
+            // Filtrar y ordenar procesos según el orden especificado
+            const orderedProcesses = processOrder.filter(process => availableProcesses.includes(process));
+            // Agregar procesos no especificados al final
+            const remainingProcesses = availableProcesses.filter(process => !processOrder.includes(process));
+            const processesWithData = [...orderedProcesses, ...remainingProcesses];
             
             processesWithData.forEach(processName => {
                 const processDataForChart = data.filter(item => item.Process === processName);

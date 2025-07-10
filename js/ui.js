@@ -214,7 +214,7 @@
          * Calcula los totales para el resumen
          */
         calculateTotals(dateGroups, data) {
-            const ALL_PROCESSES = ['IFLASH', 'UCT', 'FODTEST', 'XCVR_LT', 'LCDCAL', 'L2VISION', 'L2AR', 'DEPTHCAL', 'DEPTHVAL', 'TELECAL', 'TELEVAL', 'CFC'];
+            const ALL_PROCESSES = ['IFLASH', 'UCT', 'FODTEST', 'XCVR_RT', 'XCVR_LT', 'LCDCAL', 'L2VISION', 'L2AR', 'CFC'];
             const ALL_MANUAL_FIELDS = ['CQA1', 'RUNNING', 'CQA2', 'CQA1 Def.', 'CQA2 Def.'];
             
             const totals = { 
@@ -250,7 +250,7 @@
                 }
             }
 
-            totals.dphu = totals.input > 0 ? (totals.defects * 100 / totals.input) : 0;
+            totals.dphu = totals.defects === 0 ? 0 : (totals.input > 0 ? (totals.defects * 100 / totals.input) : 0);
             return totals;
         }
 
@@ -276,7 +276,7 @@
             if (totals.dphu > 7) dphuColorClass = 'bad';
             else if (totals.dphu >= 5) dphuColorClass = 'warn';
 
-            const ALL_PROCESSES = ['IFLASH', 'UCT', 'FODTEST', 'XCVR_LT', 'LCDCAL', 'L2VISION', 'L2AR', 'DEPTHCAL', 'DEPTHVAL', 'TELECAL', 'TELEVAL', 'CFC'];
+            const ALL_PROCESSES = ['IFLASH', 'UCT', 'FODTEST', 'XCVR_RT', 'XCVR_LT', 'LCDCAL', 'L2VISION', 'L2AR', 'CFC'];
             const ALL_MANUAL_FIELDS = ['CQA1', 'RUNNING', 'CQA2', 'CQA1 Def.', 'CQA2 Def.'];
 
             return `
@@ -318,13 +318,13 @@
             const input = manualData.INPUT !== undefined && manualData.INPUT !== '' ? parseInt(manualData.INPUT) : dailyApiTotals.input;
             const output = manualData.Output !== undefined && manualData.Output !== '' ? parseInt(manualData.Output) : dailyApiTotals.output;
             const defects = manualData.Defectos !== undefined && manualData.Defectos !== '' ? parseInt(manualData.Defectos) : dailyApiTotals.defects;
-            const dphu = input > 0 ? (defects * 100 / input) : 0;
+            const dphu = (defects || 0) === 0 ? 0 : ((input || 0) > 0 ? ((defects || 0) * 100 / (input || 0)) : 0);
             
             let dphuColorClass = 'good';
             if (dphu > 7) dphuColorClass = 'bad';
             else if (dphu >= 5) dphuColorClass = 'warn';
 
-            const ALL_PROCESSES = ['IFLASH', 'UCT', 'FODTEST', 'XCVR_LT', 'LCDCAL', 'L2VISION', 'L2AR', 'DEPTHCAL', 'DEPTHVAL', 'TELECAL', 'TELEVAL', 'CFC'];
+            const ALL_PROCESSES = ['IFLASH', 'UCT', 'FODTEST', 'XCVR_RT', 'XCVR_LT', 'LCDCAL', 'L2VISION', 'L2AR', 'CFC'];
             const ALL_MANUAL_FIELDS = ['CQA1', 'RUNNING', 'CQA2', 'CQA1 Def.', 'CQA2 Def.'];
             
             // Formatear fecha para mostrar
@@ -356,7 +356,7 @@
                                 <label class="text-xs text-gray-400">${header.replace(' Def.', ' Defectos')}</label>
                                 <input type="number" class="manual-input bg-gray-700 text-white w-full text-lg p-1 rounded" 
                                        data-field="${header}" 
-                                       value="${manualData[header] || ''}" 
+                                       value="${manualData[header] !== undefined && manualData[header] !== '' ? manualData[header] : 0}" 
                                        placeholder="${(header === 'INPUT' ? dailyApiTotals.input : header === 'Output' ? dailyApiTotals.output : header === 'Defectos' ? dailyApiTotals.defects : 0) || 0}">
                             </div>`).join('')}
                         </div>
@@ -552,9 +552,13 @@
                 const date = card.dataset.date;
                 const field = e.target.dataset.field;
                 
+                // Si el valor está vacío, tratarlo como 0
+                const value = e.target.value === '' ? '0' : e.target.value;
+                e.target.value = value;
+                
                 // Guardar en storage
                 if (window.MQS_STORAGE) {
-                    MQS_STORAGE.saveManualData(date, field, e.target.value);
+                    MQS_STORAGE.saveManualData(date, field, value);
                 }
                 
                 // Actualizar KPIs de la tarjeta
@@ -563,7 +567,7 @@
                 // Actualizar tarjeta de resumen total
                 this.updateTotalSummaryCard();
                 
-                this.console.log('🎨 [UI] Datos manuales actualizados:', date, field, e.target.value);
+                this.console.log('🎨 [UI] Datos manuales actualizados:', date, field, value);
             }
         }
 
@@ -577,7 +581,7 @@
             const input = manualData.INPUT !== undefined && manualData.INPUT !== '' ? parseInt(manualData.INPUT) : dailyApiTotals.input;
             const output = manualData.Output !== undefined && manualData.Output !== '' ? parseInt(manualData.Output) : dailyApiTotals.output;
             const defects = manualData.Defectos !== undefined && manualData.Defectos !== '' ? parseInt(manualData.Defectos) : dailyApiTotals.defects;
-            const dphu = (input || 0) > 0 ? ((defects || 0) * 100 / (input || 0)) : 0;
+            const dphu = (defects || 0) === 0 ? 0 : ((input || 0) > 0 ? ((defects || 0) * 100 / (input || 0)) : 0);
             
             // Actualizar valores en la UI
             const inputEl = card.querySelector('[data-kpi="input"]');
@@ -648,7 +652,7 @@
          * Calcula totales incluyendo datos manuales
          */
         calculateTotalsWithManualData(dateGroups, data) {
-            const ALL_PROCESSES = ['IFLASH', 'UCT', 'FODTEST', 'XCVR_LT', 'LCDCAL', 'L2VISION', 'L2AR', 'DEPTHCAL', 'DEPTHVAL', 'TELECAL', 'TELEVAL', 'CFC'];
+            const ALL_PROCESSES = ['IFLASH', 'UCT', 'FODTEST', 'XCVR_RT', 'XCVR_LT', 'LCDCAL', 'L2VISION', 'L2AR', 'CFC'];
             const ALL_MANUAL_FIELDS = ['CQA1', 'RUNNING', 'CQA2', 'CQA1 Def.', 'CQA2 Def.'];
             
             const totals = { 
@@ -684,7 +688,7 @@
                 }
             }
 
-            totals.dphu = totals.input > 0 ? (totals.defects * 100 / totals.input) : 0;
+            totals.dphu = totals.defects === 0 ? 0 : (totals.input > 0 ? (totals.defects * 100 / totals.input) : 0);
             return totals;
         }
 
