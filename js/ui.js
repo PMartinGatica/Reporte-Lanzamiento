@@ -375,19 +375,48 @@
         setupCardEvents() {
             this.console.log('🎨 [UI] Configurando eventos de tarjetas');
             
-            // Eventos para expandir/contraer detalles
+            // Remover listeners anteriores para evitar duplicados
+            document.querySelectorAll('[data-action="toggle-details"]').forEach(element => {
+                // Clonar el elemento para remover todos los event listeners
+                const newElement = element.cloneNode(true);
+                element.parentNode.replaceChild(newElement, element);
+            });
+            
+            // Agregar nuevos event listeners
             document.querySelectorAll('[data-action="toggle-details"]').forEach(element => {
                 element.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
                     const card = e.currentTarget.closest('.daily-card, #total-summary-card');
+                    if (!card) {
+                        this.console.warn('⚠️ [UI] No se encontró tarjeta para expandir');
+                        return;
+                    }
+                    
                     const details = card.querySelector('.card-details');
                     const arrow = card.querySelector('.details-arrow');
                     
                     if (details && arrow) {
-                        details.classList.toggle('expanded');
-                        arrow.classList.toggle('expanded');
+                        const isExpanded = details.classList.contains('expanded');
+                        
+                        if (isExpanded) {
+                            details.classList.remove('expanded');
+                            arrow.classList.remove('expanded');
+                            this.console.log('🎨 [UI] Tarjeta contraída');
+                        } else {
+                            details.classList.add('expanded');
+                            arrow.classList.add('expanded');
+                            this.console.log('🎨 [UI] Tarjeta expandida');
+                        }
+                    } else {
+                        this.console.warn('⚠️ [UI] No se encontraron elementos de detalles o flecha');
                     }
                 });
             });
+            
+            const toggleElements = document.querySelectorAll('[data-action="toggle-details"]');
+            this.console.log('🎨 [UI] Eventos configurados para', toggleElements.length, 'elementos');
         }
 
         /**
@@ -835,6 +864,37 @@
                     setTimeout(() => notificationEl.remove(), 300);
                 }
             }, 5000);
+        }
+        /**
+         * Método para actualizar las tarjetas del dashboard con datos filtrados
+         */
+        updateDashboard() {
+            this.console.log('🔄 [UI] Actualizando dashboard...');
+            
+            const data = window.filteredData || window.currentFilteredData || [];
+            this.console.log('🔄 [UI] Usando datos:', data.length, 'registros');
+            
+            if (data.length === 0) {
+                this.console.warn('⚠️ [UI] No hay datos filtrados para mostrar');
+            }
+            
+            this.renderCards(data);
+            this.setupCardEvents();
+        }
+
+        /**
+         * Método para actualizar el análisis de procesos con datos filtrados
+         */
+        updateProcessAnalysis() {
+            this.console.log('🔄 [UI] Actualizando análisis de procesos...');
+            
+            const data = window.filteredData || window.currentFilteredData || [];
+            
+            if (window.MQS_CHARTS && typeof window.MQS_CHARTS.createProcessReports === 'function') {
+                window.MQS_CHARTS.createProcessReports(data);
+            } else {
+                this.console.warn('⚠️ [UI] MQS_CHARTS no disponible para actualizar análisis de procesos');
+            }
         }
     }
 

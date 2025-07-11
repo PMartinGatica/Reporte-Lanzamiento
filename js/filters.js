@@ -26,7 +26,6 @@
             this.populateProcessDropdown();
             this.setupDropdownEvents();
             this.restoreSavedFilters();
-            this.setupFilterEvents();
         }
 
         /**
@@ -57,272 +56,441 @@
         }
 
         /**
-         * Popula el filtro de fechas
+         * Popula el filtro de fechas - VERSIÓN DISCRETA
          */
         populateDateFilter() {
-            this.console.log('🔍 [FILTERS] Populando filtro de fechas...');
+            this.console.log('📅 [FILTERS] Populando filtro de fechas discreto...');
             
-            const dateFilter = document.getElementById('date-filter');
-            if (!dateFilter) {
-                this.console.error('❌ [FILTERS] Elemento date-filter no encontrado');
+            const dateFilterContainer = document.getElementById('date-filter-container');
+            if (!dateFilterContainer) {
+                this.console.error('❌ [FILTERS] Contenedor date-filter-container no encontrado');
                 return;
             }
 
-            const uniqueDates = [...new Set(this.allData.map(item => item.Date).filter(Boolean))].sort();
-            
-            dateFilter.innerHTML = '<option value="">Todas las fechas</option>';
-            uniqueDates.forEach(date => {
-                const option = document.createElement('option');
-                option.value = date;
-                option.textContent = date;
-                dateFilter.appendChild(option);
-            });
+            // Obtener fechas únicas de los datos + fechas adicionales (normalizadas)
+            const dataDates = [...new Set(this.allData.map(item => this.normalizeDateString(item.Date)).filter(Boolean))];
+            const additionalDates = this.generateRecentDates(15);
+            const allDates = [...new Set([...dataDates, ...additionalDates])]
+                .sort((a, b) => new Date(b) - new Date(a));
 
-            this.console.log('✅ [FILTERS] Filtro de fechas poblado con', uniqueDates.length, 'fechas');
+            this.console.log('📅 [FILTERS] Fechas encontradas:', { dataDates: dataDates.length, additionalDates: additionalDates.length, total: allDates.length });
+
+            // HTML discreto y simple
+            const dateFilterHTML = `
+                <div class="relative">
+                    <button id="date-filter-btn" class="bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center space-x-2 text-sm">
+                        <span>📅</span>
+                        <span id="date-filter-label">Fechas</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    
+                    <div id="date-filter-dropdown" class="hidden absolute left-0 mt-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-50">
+                        <div class="p-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs text-gray-400">Fechas:</span>
+                                <div class="flex space-x-1">
+                                    <button id="date-select-all" class="text-xs text-blue-400 hover:text-blue-300">Todas</button>
+                                    <span class="text-gray-500">|</span>
+                                    <button id="date-select-none" class="text-xs text-red-400 hover:text-red-300">Ninguna</button>
+                                </div>
+                            </div>
+                            
+                            <div id="date-checkboxes-container" class="max-h-40 overflow-y-auto space-y-1">
+                                ${allDates.map(date => {
+                                    const displayDate = this.formatDateSimple(date);
+                                    return `
+                                        <label class="flex items-center space-x-2 text-xs hover:bg-gray-700 p-1 rounded cursor-pointer">
+                                            <input type="checkbox" 
+                                                   value="${date}" 
+                                                   class="date-checkbox w-3 h-3" 
+                                                   checked>
+                                            <span class="text-white">${displayDate}</span>
+                                        </label>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            dateFilterContainer.innerHTML = dateFilterHTML;
+            this.setupSimpleDateEvents();
+            this.restoreDateFilters();
+            this.updateDateFilterLabel();
+
+            this.console.log('✅ [FILTERS] Filtro de fechas discreto configurado');
         }
 
         /**
-         * Popula el dropdown de procesos
+         * Genera fechas recientes
+         */
+        generateRecentDates(days) {
+            const dates = [];
+            const today = new Date();
+            for (let i = 0; i < days; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                // Formatear fecha para que coincida con el formato de los datos
+                dates.push(date.toISOString().split('T')[0]);
+            }
+            return dates;
+        }
+
+        /**
+         * Formato simple de fecha
+         */
+        formatDateSimple(dateString) {
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('es-ES');
+            } catch (error) {
+                return dateString;
+            }
+        }
+
+        /**
+         * Normaliza una cadena de fecha al formato YYYY-MM-DD
+         */
+        normalizeDateString(dateString) {
+            if (!dateString) return null;
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return null;
+                return date.toISOString().split('T')[0];
+            } catch (error) {
+                return null;
+            }
+        }
+
+        /**
+         * Eventos simples para fechas - DISCRETO
+         */
+        setupSimpleDateEvents() {
+            const filterBtn = document.getElementById('date-filter-btn');
+            const dropdown = document.getElementById('date-filter-dropdown');
+            const selectAllBtn = document.getElementById('date-select-all');
+            const selectNoneBtn = document.getElementById('date-select-none');
+            const container = document.getElementById('date-checkboxes-container');
+
+            // Toggle dropdown
+            if (filterBtn) {
+                filterBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdown.classList.toggle('hidden');
+                });
+            }
+
+            // Cerrar dropdown al hacer click fuera
+            document.addEventListener('click', () => {
+                if (dropdown) dropdown.classList.add('hidden');
+            });
+
+            // Prevenir cierre al hacer click dentro del dropdown
+            if (dropdown) {
+                dropdown.addEventListener('click', (e) => e.stopPropagation());
+            }
+
+            if (selectAllBtn) {
+                selectAllBtn.addEventListener('click', () => {
+                    const checkboxes = container.querySelectorAll('.date-checkbox');
+                    checkboxes.forEach(cb => cb.checked = true);
+                    this.updateDateFilterLabel();
+                    this.saveDateFilters();
+                    this.applyFilters();
+                });
+            }
+
+            if (selectNoneBtn) {
+                selectNoneBtn.addEventListener('click', () => {
+                    const checkboxes = container.querySelectorAll('.date-checkbox');
+                    checkboxes.forEach(cb => cb.checked = false);
+                    this.updateDateFilterLabel();
+                    this.saveDateFilters();
+                    this.applyFilters();
+                });
+            }
+
+            if (container) {
+                container.addEventListener('change', (e) => {
+                    if (e.target.classList.contains('date-checkbox')) {
+                        this.updateDateFilterLabel();
+                        this.saveDateFilters();
+                        this.applyFilters();
+                    }
+                });
+            }
+        }
+
+        /**
+         * Método faltante: populateProcessDropdown
          */
         populateProcessDropdown() {
-            this.console.log('🔍 [FILTERS] Populando dropdown de procesos...');
+            this.console.log('⚙️ [FILTERS] Populando dropdown de procesos...');
             
-            const container = document.getElementById('process-checkboxes-container');
-            if (!container) {
-                this.console.error('❌ [FILTERS] Contenedor process-checkboxes-container no encontrado');
+            const processDropdown = document.getElementById('process-checkboxes-container');
+            if (!processDropdown) {
+                this.console.warn('⚠️ [FILTERS] Contenedor de procesos no encontrado');
                 return;
             }
 
-            const uniqueProcesses = [...new Set(this.allData.map(item => item.Process).filter(Boolean))].sort();
-            this.console.log('🔍 [FILTERS] Procesos únicos encontrados:', uniqueProcesses);
-
-            container.innerHTML = '';
-            uniqueProcesses.forEach(process => {
-                const checkboxDiv = document.createElement('div');
-                checkboxDiv.className = 'flex items-center space-x-2';
-                
-                checkboxDiv.innerHTML = `
-                    <input type="checkbox" id="process-${process}" value="${process}" 
-                           class="process-checkbox w-4 h-4 text-indigo-600 bg-gray-700 border-gray-600 rounded focus:ring-indigo-500 focus:ring-2" 
+            const uniqueProcesses = [...new Set(this.allData.map(item => item.Process).filter(Boolean))];
+            
+            processDropdown.innerHTML = uniqueProcesses.map(process => `
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" 
+                           id="process-${process}" 
+                           value="${process}" 
+                           class="process-checkbox" 
                            checked>
-                    <label for="process-${process}" class="text-white text-sm cursor-pointer">${process}</label>
-                `;
-                
-                container.appendChild(checkboxDiv);
-            });
+                    <label for="process-${process}" class="text-white text-sm cursor-pointer">
+                        ${process}
+                    </label>
+                </div>
+            `).join('');
 
             this.console.log('✅ [FILTERS] Dropdown de procesos poblado con', uniqueProcesses.length, 'procesos');
         }
 
         /**
-         * Configura eventos de los dropdowns
+         * Método faltante: setupDropdownEvents
          */
         setupDropdownEvents() {
-            // Dropdown de procesos
-            const processBtn = document.getElementById('process-filter-btn');
-            const processDropdown = document.getElementById('process-filter-dropdown');
-            const processSelectAll = document.getElementById('process-select-all');
-
-            if (processBtn && processDropdown) {
-                processBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    processDropdown.classList.toggle('hidden');
-                });
-                
-                // Prevenir cierre al hacer click dentro del dropdown
-                processDropdown.addEventListener('click', (e) => e.stopPropagation());
-            }
-
-            if (processSelectAll) {
-                processSelectAll.addEventListener('click', () => {
-                    const checkboxes = document.querySelectorAll('.process-checkbox');
-                    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-                    checkboxes.forEach(cb => cb.checked = !allChecked);
-                    processSelectAll.textContent = allChecked ? 'Todos' : 'Ninguno';
-                    this.applyFilters();
-                    this.saveCurrentFilters();
-                });
-            }
-
-            // Eventos de cambio en checkboxes de procesos
-            document.addEventListener('change', (e) => {
-                if (e.target.classList.contains('process-checkbox')) {
-                    this.applyFilters();
-                    this.saveCurrentFilters();
-                }
-            });
-
-            // Cerrar dropdowns al hacer click fuera
-            document.addEventListener('click', () => {
-                if (processDropdown) processDropdown.classList.add('hidden');
-            });
-
-            this.console.log('🔍 [FILTERS] Eventos de dropdowns configurados');
-        }
-
-        /**
-         * Configura eventos de filtros
-         */
-        setupFilterEvents() {
+            this.console.log('🔧 [FILTERS] Configurando eventos de dropdown...');
+            
+            // Eventos para filtro de modelo
             const modelFilter = document.getElementById('model-filter');
-            const dateFilter = document.getElementById('date-filter');
-            const heroTitle = document.getElementById('hero-title');
-
             if (modelFilter) {
-                modelFilter.addEventListener('change', (e) => {
-                    const selectedModel = e.target.value;
-                    
-                    // Actualizar el título del hero
-                    if (heroTitle) {
-                        heroTitle.textContent = selectedModel || 'MQS Report';
-                        this.console.log('🎯 [FILTERS] Título del hero actualizado:', selectedModel);
-                    }
-                    
+                modelFilter.addEventListener('change', () => {
                     this.applyFilters();
-                    this.saveCurrentFilters();
                 });
             }
 
-            if (dateFilter) {
-                dateFilter.addEventListener('change', () => {
+            // Eventos para filtro de proceso
+            const processContainer = document.getElementById('process-checkboxes-container');
+            if (processContainer) {
+                processContainer.addEventListener('change', () => {
                     this.applyFilters();
-                    this.saveCurrentFilters();
                 });
             }
 
-            this.console.log('🔍 [FILTERS] Eventos de filtros configurados');
+            this.console.log('✅ [FILTERS] Eventos de dropdown configurados');
         }
 
         /**
-         * Aplica todos los filtros activos
+         * Método faltante: restoreSavedFilters
+         */
+        restoreSavedFilters() {
+            this.console.log('🔄 [FILTERS] Restaurando filtros guardados...');
+            
+            if (!window.MQS_STORAGE) {
+                this.console.warn('⚠️ [FILTERS] MQS_STORAGE no disponible');
+                return;
+            }
+
+            try {
+                const savedFilters = MQS_STORAGE.getSavedFilters();
+                
+                // Restaurar modelo
+                const modelFilter = document.getElementById('model-filter');
+                if (modelFilter && savedFilters.selectedModel) {
+                    modelFilter.value = savedFilters.selectedModel;
+                    // Actualizar título del héroe al restaurar
+                    this.updateHeroTitle(savedFilters.selectedModel);
+                }
+
+                // Restaurar fechas (usando el nuevo sistema)
+                this.restoreDateFilters();
+
+                this.console.log('✅ [FILTERS] Filtros restaurados');
+            } catch (error) {
+                this.console.error('❌ [FILTERS] Error restaurando filtros:', error);
+            }
+        }
+
+        /**
+         * Guarda fechas seleccionadas
+         */
+        saveDateFilters() {
+            try {
+                const checkboxes = document.querySelectorAll('.date-checkbox:checked');
+                const selectedDates = Array.from(checkboxes).map(cb => cb.value);
+                
+                if (window.MQS_STORAGE) {
+                    MQS_STORAGE.saveDateFilters(selectedDates);
+                }
+
+                // Actualizar filtros globales
+                window.currentFilters = window.currentFilters || {};
+                window.currentFilters.selectedDates = selectedDates;
+
+                this.console.log('💾 [FILTERS] Fechas guardadas:', selectedDates.length);
+            } catch (error) {
+                this.console.error('❌ [FILTERS] Error guardando fechas:', error);
+            }
+        }
+
+        /**
+         * Restaura fechas seleccionadas
+         */
+        restoreDateFilters() {
+            if (!window.MQS_STORAGE) return;
+
+            try {
+                const savedDates = MQS_STORAGE.getDateFilters();
+                if (!savedDates || savedDates.length === 0) return;
+
+                const checkboxes = document.querySelectorAll('.date-checkbox');
+                checkboxes.forEach(cb => cb.checked = false);
+
+                savedDates.forEach(date => {
+                    const checkbox = document.querySelector(`input[value="${date}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+
+                this.console.log('🔄 [FILTERS] Fechas restauradas:', savedDates.length);
+            } catch (error) {
+                this.console.error('❌ [FILTERS] Error restaurando fechas:', error);
+            }
+        }
+
+        /**
+         * Actualiza la etiqueta del filtro de fechas
+         */
+        updateDateFilterLabel() {
+            const label = document.getElementById('date-filter-label');
+            const checkboxes = document.querySelectorAll('.date-checkbox');
+            const checkedBoxes = document.querySelectorAll('.date-checkbox:checked');
+            
+            if (!label) return;
+
+            if (checkedBoxes.length === 0) {
+                label.textContent = 'Sin fechas';
+            } else if (checkedBoxes.length === checkboxes.length) {
+                label.textContent = 'Todas';
+            } else if (checkedBoxes.length === 1) {
+                const date = checkedBoxes[0].value;
+                label.textContent = this.formatDateSimple(date);
+            } else {
+                label.textContent = `${checkedBoxes.length} fechas`;
+            }
+        }
+
+        /**
+         * Método faltante: applyFilters
          */
         applyFilters() {
             this.console.log('🔍 [FILTERS] Aplicando filtros...');
             
-            const modelFilter = document.getElementById('model-filter');
-            const dateFilter = document.getElementById('date-filter');
-            
-            let filteredData = [...this.allData];
+            if (!this.allData) {
+                this.console.warn('⚠️ [FILTERS] No hay datos para filtrar');
+                return;
+            }
 
-            // Filtro de modelo usando Family
+            let filteredData = [...this.allData];
+            
+            // Filtro de modelo
+            const modelFilter = document.getElementById('model-filter');
             if (modelFilter && modelFilter.value) {
                 filteredData = filteredData.filter(item => item.Family === modelFilter.value);
-                this.console.log('🔍 [FILTERS] Filtro de modelo aplicado:', modelFilter.value);
+                // Actualizar título del héroe
+                this.updateHeroTitle(modelFilter.value);
+            } else {
+                // Si no hay modelo seleccionado, restaurar título por defecto
+                this.updateHeroTitle('');
             }
 
-            // Filtro de fecha
-            if (dateFilter && dateFilter.value) {
-                filteredData = filteredData.filter(item => new Date(item.Date) >= new Date(dateFilter.value));
-                this.console.log('🔍 [FILTERS] Filtro de fecha aplicado:', dateFilter.value);
+            // Filtro de fechas (checkboxes)
+            const selectedDates = Array.from(document.querySelectorAll('.date-checkbox:checked'))
+                .map(cb => cb.value);
+            
+            this.console.log('🔍 [FILTERS] Fechas seleccionadas:', selectedDates);
+            
+            if (selectedDates.length > 0) {
+                filteredData = filteredData.filter(item => {
+                    const normalizedItemDate = this.normalizeDateString(item.Date);
+                    const isIncluded = selectedDates.includes(normalizedItemDate);
+                    return isIncluded;
+                });
+                this.console.log('🔍 [FILTERS] Después del filtro de fechas:', filteredData.length, 'registros');
             }
 
-            // Filtro de procesos
-            const selectedProcesses = this.getSelectedProcesses();
+            // Filtro de procesos (checkboxes)
+            const selectedProcesses = Array.from(document.querySelectorAll('.process-checkbox:checked'))
+                .map(cb => cb.value);
+            
             if (selectedProcesses.length > 0) {
                 filteredData = filteredData.filter(item => selectedProcesses.includes(item.Process));
-                this.console.log('🔍 [FILTERS] Filtro de procesos aplicado:', selectedProcesses);
             }
 
-            this.filteredData = filteredData;
-            
-            // Almacenar datos filtrados globalmente
+            // Actualizar datos filtrados globalmente (ambas variables para compatibilidad)
+            window.filteredData = filteredData;
             window.currentFilteredData = filteredData;
             
-            // Actualizar UI
-            if (window.MQS_UI) {
-                MQS_UI.renderCards(filteredData);
-                MQS_UI.renderProcessReports(filteredData);
-            }
-            
-            // Actualizar visibilidad de procesos en la UI
-            this.updateProcessVisibility();
+            // Forzar actualización del dashboard y gráficos
+            this.updateDashboard(filteredData);
 
-            this.console.log('✅ [FILTERS] Filtros aplicados. Registros resultantes:', filteredData.length);
-        }
-
-        /**
-         * Obtiene procesos seleccionados
-         */
-        getSelectedProcesses() {
-            const checkboxes = document.querySelectorAll('.process-checkbox:checked');
-            return Array.from(checkboxes).map(cb => cb.value);
-        }
-
-        /**
-         * Actualiza la visibilidad de procesos en la UI
-         */
-        updateProcessVisibility() {
-            const selectedProcesses = this.getSelectedProcesses();
-            const processReports = document.querySelectorAll('[data-process]');
-            
-            processReports.forEach(report => {
-                const processName = report.dataset.process;
-                if (selectedProcesses.length === 0 || selectedProcesses.includes(processName)) {
-                    report.style.display = '';
-                } else {
-                    report.style.display = 'none';
-                }
+            this.console.log('✅ [FILTERS] Filtros aplicados:', {
+                total: this.allData.length,
+                filtrados: filteredData.length,
+                modelo: modelFilter?.value || 'todos',
+                fechas: selectedDates.length,
+                procesos: selectedProcesses.length
             });
-
-            this.console.log('🔍 [FILTERS] Visibilidad de procesos actualizada');
         }
 
         /**
-         * Guarda filtros actuales
+         * Actualiza el título del héroe con el modelo seleccionado
          */
-        saveCurrentFilters() {
-            if (!window.MQS_STORAGE) return;
-
-            const modelFilter = document.getElementById('model-filter');
-            const dateFilter = document.getElementById('date-filter');
-            const selectedProcesses = this.getSelectedProcesses();
-
-            MQS_STORAGE.saveFilters(
-                modelFilter ? modelFilter.value : '',
-                dateFilter ? dateFilter.value : '',
-                selectedProcesses,
-                [] // testcodes ya no se usan globalmente
-            );
-
-            this.console.log('🔍 [FILTERS] Filtros guardados');
+        updateHeroTitle(modelName) {
+            const heroTitle = document.getElementById('hero-title');
+            if (heroTitle) {
+                if (modelName && modelName.trim() !== '') {
+                    heroTitle.textContent = modelName;
+                    this.console.log('🎯 [FILTERS] Título actualizado:', modelName);
+                } else {
+                    heroTitle.textContent = 'Explorer';
+                    this.console.log('🎯 [FILTERS] Título restaurado a default');
+                }
+            }
         }
 
         /**
-         * Restaura filtros guardados
+         * Actualiza el dashboard y gráficos con los datos filtrados
          */
-        restoreSavedFilters() {
-            if (!window.MQS_STORAGE) return;
-
-            const savedFilters = MQS_STORAGE.getSavedFilters();
-            this.console.log('🔍 [FILTERS] Restaurando filtros:', savedFilters);
-
-            const modelFilter = document.getElementById('model-filter');
-            const dateFilter = document.getElementById('date-filter');
-
-            if (modelFilter && savedFilters.selectedModel) {
-                modelFilter.value = savedFilters.selectedModel;
-            }
-
-            if (dateFilter && savedFilters.selectedDate) {
-                dateFilter.value = savedFilters.selectedDate;
-            }
-
-            // Restaurar selección de procesos
-            if (savedFilters.selectedProcesses && savedFilters.selectedProcesses.length > 0) {
-                // Primero deseleccionar todos
-                document.querySelectorAll('.process-checkbox').forEach(cb => cb.checked = false);
-                
-                // Luego seleccionar los guardados
-                savedFilters.selectedProcesses.forEach(process => {
-                    const checkbox = document.getElementById(`process-${process}`);
-                    if (checkbox) checkbox.checked = true;
+        updateDashboard(filteredData) {
+            this.console.log('📊 [FILTERS] Actualizando dashboard con', filteredData.length, 'registros');
+            
+            try {
+                // Disparar eventos personalizados para notificar cambios
+                const updateEvent = new CustomEvent('filtersApplied', {
+                    detail: { 
+                        filteredData: filteredData,
+                        count: filteredData.length 
+                    }
                 });
+                document.dispatchEvent(updateEvent);
+
+                // Intentar actualizar directamente si MQS_UI está disponible
+                if (window.MQS_UI) {
+                    // Renderizar tarjetas del dashboard
+                    if (typeof window.MQS_UI.updateDashboard === 'function') {
+                        window.MQS_UI.updateDashboard();
+                    }
+                    
+                    // Actualizar análisis de procesos
+                    if (typeof window.MQS_UI.updateProcessAnalysis === 'function') {
+                        window.MQS_UI.updateProcessAnalysis();
+                    }
+                }
+
+                this.console.log('✅ [FILTERS] Dashboard actualizado correctamente');
+                
+            } catch (error) {
+                this.console.error('❌ [FILTERS] Error actualizando dashboard:', error);
             }
-
-            // Aplicar filtros después de restaurar
-            setTimeout(() => this.applyFilters(), 100);
-
-            this.console.log('✅ [FILTERS] Filtros restaurados');
         }
     }
 

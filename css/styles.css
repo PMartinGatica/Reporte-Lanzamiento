@@ -998,3 +998,72 @@ body {
         background-color: rgba(31, 41, 55, 0.9);
     }
 }
+
+/* ==========================================
+   ESTILOS PARA TARJETAS EXPANDIBLES
+   ========================================== */
+
+/* Detalles de tarjetas - inicialmente ocultos */
+.card-details {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Detalles expandidos */
+.card-details.expanded {
+    max-height: 1000px;
+    opacity: 1;
+}
+
+/* Flecha de detalles */
+.details-arrow {
+    transform: rotate(0deg);
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Flecha expandida */
+.details-arrow.expanded {
+    transform: rotate(180deg);
+}
+
+/* Hover en botones de detalles */
+[data-action="toggle-details"] {
+    transition: background-color 0.2s ease-in-out;
+}
+
+[data-action="toggle-details"]:hover {
+    background-color: rgba(55, 65, 81, 0.3);
+}
+
+/* Estilos para tarjetas de día */
+.daily-card {
+    border: 1px solid rgba(75, 85, 99, 0.3);
+    transition: border-color 0.2s ease-in-out;
+}
+
+.daily-card:hover {
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+/* Tarjeta de resumen total */
+#total-summary-card {
+    border: 2px solid rgba(99, 102, 241, 0.3);
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.9), rgba(31, 41, 55, 0.9));
+}
+
+#total-summary-card:hover {
+    border-color: rgba(99, 102, 241, 0.7);
+}
+
+/* Animación suave para inputs manuales */
+.manual-input {
+    transition: all 0.2s ease-in-out;
+}
+
+.manual-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+    background-color: rgba(55, 65, 81, 1);
+}

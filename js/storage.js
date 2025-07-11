@@ -270,6 +270,31 @@
         }
 
         /**
+         * Guarda filtros de fechas seleccionadas
+         */
+        saveDateFilters(selectedDates) {
+            try {
+                localStorage.setItem('mqs_date_filters', JSON.stringify(selectedDates));
+                this.console.log('💾 [STORAGE] Filtros de fecha guardados:', selectedDates.length);
+            } catch (error) {
+                this.console.error('❌ [STORAGE] Error guardando filtros de fecha:', error);
+            }
+        }
+
+        /**
+         * Obtiene filtros de fechas guardados
+         */
+        getDateFilters() {
+            try {
+                const saved = localStorage.getItem('mqs_date_filters');
+                return saved ? JSON.parse(saved) : [];
+            } catch (error) {
+                this.console.error('❌ [STORAGE] Error obteniendo filtros de fecha:', error);
+                return [];
+            }
+        }
+
+        /**
          * Obtiene todos los datos
          */
         getAllData() {
