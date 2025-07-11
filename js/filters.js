@@ -251,6 +251,9 @@
                 </div>
             `).join('');
 
+            // Actualizar etiqueta después de poblar
+            this.updateProcessFilterLabel();
+
             this.console.log('✅ [FILTERS] Dropdown de procesos poblado con', uniqueProcesses.length, 'procesos');
         }
 
@@ -268,13 +271,49 @@
                 });
             }
 
-            // Eventos para filtro de proceso
+            // Eventos para dropdown de procesos (botón toggle)
+            const processFilterBtn = document.getElementById('process-filter-btn');
+            const processDropdown = document.getElementById('process-filter-dropdown');
+            const processSelectAllBtn = document.getElementById('process-select-all');
             const processContainer = document.getElementById('process-checkboxes-container');
+            
+            if (processFilterBtn && processDropdown) {
+                // Toggle dropdown de procesos
+                processFilterBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    processDropdown.classList.toggle('hidden');
+                    this.console.log('🔽 [FILTERS] Toggle dropdown de procesos');
+                });
+
+                // Prevenir cierre al hacer click dentro del dropdown
+                processDropdown.addEventListener('click', (e) => e.stopPropagation());
+            }
+
+            // Botón "Todos" para procesos
+            if (processSelectAllBtn && processContainer) {
+                processSelectAllBtn.addEventListener('click', () => {
+                    const checkboxes = processContainer.querySelectorAll('.process-checkbox');
+                    checkboxes.forEach(cb => cb.checked = true);
+                    this.updateProcessFilterLabel();
+                    this.applyFilters();
+                    this.console.log('✅ [FILTERS] Todos los procesos seleccionados');
+                });
+            }
+
+            // Eventos para filtro de proceso (checkboxes)
             if (processContainer) {
                 processContainer.addEventListener('change', () => {
+                    this.updateProcessFilterLabel();
                     this.applyFilters();
                 });
             }
+
+            // Cerrar dropdowns al hacer click fuera (para procesos)
+            document.addEventListener('click', () => {
+                if (processDropdown) {
+                    processDropdown.classList.add('hidden');
+                }
+            });
 
             this.console.log('✅ [FILTERS] Eventos de dropdown configurados');
         }
@@ -303,6 +342,9 @@
 
                 // Restaurar fechas (usando el nuevo sistema)
                 this.restoreDateFilters();
+
+                // Restaurar procesos y actualizar etiqueta
+                this.updateProcessFilterLabel();
 
                 this.console.log('✅ [FILTERS] Filtros restaurados');
             } catch (error) {
@@ -375,6 +417,31 @@
                 label.textContent = this.formatDateSimple(date);
             } else {
                 label.textContent = `${checkedBoxes.length} fechas`;
+            }
+        }
+
+        /**
+         * Actualiza la etiqueta del filtro de procesos
+         */
+        updateProcessFilterLabel() {
+            const btn = document.getElementById('process-filter-btn');
+            const checkboxes = document.querySelectorAll('.process-checkbox');
+            const checkedBoxes = document.querySelectorAll('.process-checkbox:checked');
+            
+            if (!btn) return;
+
+            // Buscar el elemento span que contiene el texto "Procesos"
+            const spanElement = btn.querySelector('span');
+            if (!spanElement) return;
+
+            if (checkedBoxes.length === 0) {
+                spanElement.textContent = 'Sin procesos';
+            } else if (checkedBoxes.length === checkboxes.length) {
+                spanElement.textContent = 'Todos los procesos';
+            } else if (checkedBoxes.length === 1) {
+                spanElement.textContent = checkedBoxes[0].parentElement.textContent.trim();
+            } else {
+                spanElement.textContent = `${checkedBoxes.length} procesos`;
             }
         }
 

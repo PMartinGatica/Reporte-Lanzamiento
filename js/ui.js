@@ -200,7 +200,7 @@
 
             const sortedDates = Object.keys(dateGroups).sort((a,b) => b.localeCompare(a));
             
-            const totals = this.calculateTotals(dateGroups, data);
+            const totals = this.calculateTotalsWithManualData(dateGroups, data);
             const totalCardHTML = this.createTotalSummaryCardHTML(totals);
             const dailyCardsHTML = sortedDates.map(date => this.createDailyCardHTML(date, dateGroups[date], data)).join('');
 
@@ -208,50 +208,6 @@
             
             // Configurar eventos para las tarjetas
             this.setupCardEvents();
-        }
-
-        /**
-         * Calcula los totales para el resumen
-         */
-        calculateTotals(dateGroups, data) {
-            const ALL_PROCESSES = ['IFLASH', 'UCT', 'FODTEST', 'XCVR_RT', 'XCVR_LT', 'LCDCAL', 'L2VISION', 'L2AR', 'CFC'];
-            const ALL_MANUAL_FIELDS = ['CQA1', 'RUNNING', 'CQA2', 'CQA1 Def.', 'CQA2 Def.'];
-            
-            const totals = { 
-                input: 0, output: 0, defects: 0, days: Object.keys(dateGroups).length,
-                processes: {}, manual: {} 
-            };
-
-            ALL_PROCESSES.forEach(p => totals.processes[p] = 0);
-            ALL_MANUAL_FIELDS.forEach(f => totals.manual[f] = 0);
-
-            for(const date in dateGroups) {
-                const dailyApiData = this.getDailyApiTotals(date, data);
-                const manualData = window.MQS_STORAGE ? MQS_STORAGE.getManualData(date) : {};
-                
-                const input = manualData.INPUT !== undefined && manualData.INPUT !== '' ? parseInt(manualData.INPUT) : dailyApiData.input;
-                const output = manualData.Output !== undefined && manualData.Output !== '' ? parseInt(manualData.Output) : dailyApiData.output;
-                const defects = manualData.Defectos !== undefined && manualData.Defectos !== '' ? parseInt(manualData.Defectos) : dailyApiData.defects;
-                
-                totals.input += isNaN(input) ? 0 : input;
-                totals.output += isNaN(output) ? 0 : output;
-                totals.defects += isNaN(defects) ? 0 : defects;
-                
-                for(const process in dateGroups[date].auto) {
-                    if(totals.processes.hasOwnProperty(process)) {
-                        totals.processes[process] += dateGroups[date].auto[process];
-                    }
-                }
-
-                for(const field in manualData) {
-                    if(totals.manual.hasOwnProperty(field)) {
-                        totals.manual[field] += parseInt(manualData[field]) || 0;
-                    }
-                }
-            }
-
-            totals.dphu = totals.defects === 0 ? 0 : (totals.input > 0 ? (totals.defects * 100 / totals.input) : 0);
-            return totals;
         }
 
         /**
@@ -315,10 +271,11 @@
             // Obtener datos manuales guardados
             const manualData = window.MQS_STORAGE ? MQS_STORAGE.getManualData(date) : {};
             
-            const input = manualData.INPUT !== undefined && manualData.INPUT !== '' ? parseInt(manualData.INPUT) : dailyApiTotals.input;
-            const output = manualData.Output !== undefined && manualData.Output !== '' ? parseInt(manualData.Output) : dailyApiTotals.output;
-            const defects = manualData.Defectos !== undefined && manualData.Defectos !== '' ? parseInt(manualData.Defectos) : dailyApiTotals.defects;
-            const dphu = (defects || 0) === 0 ? 0 : ((input || 0) > 0 ? ((defects || 0) * 100 / (input || 0)) : 0);
+            // Los KPIs principales deben empezar en 0 y solo cambiar si hay datos manuales
+            const input = (manualData.INPUT !== undefined && manualData.INPUT !== '') ? parseInt(manualData.INPUT) : 0;
+            const output = (manualData.Output !== undefined && manualData.Output !== '') ? parseInt(manualData.Output) : 0;
+            const defects = (manualData.Defectos !== undefined && manualData.Defectos !== '') ? parseInt(manualData.Defectos) : 0;
+            const dphu = (defects === 0 || input === 0) ? 0 : ((defects * 100) / input);
             
             let dphuColorClass = 'good';
             if (dphu > 7) dphuColorClass = 'bad';
@@ -340,9 +297,9 @@
                 <div class="p-4 flex flex-col sm:flex-row justify-between items-center cursor-pointer" data-action="toggle-details">
                     <h3 class="text-xl font-bold text-white mb-2 sm:mb-0">${displayDate}</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                        <div><span class="text-xs text-gray-400 uppercase">Input</span><p class="text-2xl font-bold text-blue-400" data-kpi="input">${input || 0}</p></div>
-                        <div><span class="text-xs text-gray-400 uppercase">Salida</span><p class="text-2xl font-bold text-green-400" data-kpi="output">${output || 0}</p></div>
-                        <div><span class="text-xs text-gray-400 uppercase">Defectos</span><p class="text-2xl font-bold text-red-400" data-kpi="defects">${defects || 0}</p></div>
+                        <div><span class="text-xs text-gray-400 uppercase">Input</span><p class="text-2xl font-bold text-blue-400" data-kpi="input">${input}</p></div>
+                        <div><span class="text-xs text-gray-400 uppercase">Salida</span><p class="text-2xl font-bold text-green-400" data-kpi="output">${output}</p></div>
+                        <div><span class="text-xs text-gray-400 uppercase">Defectos</span><p class="text-2xl font-bold text-red-400" data-kpi="defects">${defects}</p></div>
                         <div class="kpi-card ${dphuColorClass} rounded-md p-2" data-kpi="dphu-card"><span class="text-xs text-gray-400 uppercase">DPHU</span><p class="text-2xl font-bold" data-kpi="dphu">${dphu.toFixed(2)}%</p></div>
                     </div>
                     <button class="mt-4 sm:mt-0 text-gray-400 hover:text-white"><svg class="details-arrow w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
@@ -604,13 +561,13 @@
          * Actualiza los KPIs de una tarjeta diaria
          */
         updateDailyCardKPIs(card, date) {
-            const dailyApiTotals = this.getDailyApiTotals(date, window.currentFilteredData || []);
             const manualData = window.MQS_STORAGE ? MQS_STORAGE.getManualData(date) : {};
             
-            const input = manualData.INPUT !== undefined && manualData.INPUT !== '' ? parseInt(manualData.INPUT) : dailyApiTotals.input;
-            const output = manualData.Output !== undefined && manualData.Output !== '' ? parseInt(manualData.Output) : dailyApiTotals.output;
-            const defects = manualData.Defectos !== undefined && manualData.Defectos !== '' ? parseInt(manualData.Defectos) : dailyApiTotals.defects;
-            const dphu = (defects || 0) === 0 ? 0 : ((input || 0) > 0 ? ((defects || 0) * 100 / (input || 0)) : 0);
+            // Los KPIs deben empezar en 0 y solo cambiar si hay datos manuales
+            const input = (manualData.INPUT !== undefined && manualData.INPUT !== '') ? parseInt(manualData.INPUT) : 0;
+            const output = (manualData.Output !== undefined && manualData.Output !== '') ? parseInt(manualData.Output) : 0;
+            const defects = (manualData.Defectos !== undefined && manualData.Defectos !== '') ? parseInt(manualData.Defectos) : 0;
+            const dphu = (defects === 0 || input === 0) ? 0 : ((defects * 100) / input);
             
             // Actualizar valores en la UI
             const inputEl = card.querySelector('[data-kpi="input"]');
@@ -619,9 +576,9 @@
             const dphuEl = card.querySelector('[data-kpi="dphu"]');
             const kpiCard = card.querySelector('[data-kpi="dphu-card"]');
             
-            if (inputEl) inputEl.textContent = input || 0;
-            if (outputEl) outputEl.textContent = output || 0;
-            if (defectsEl) defectsEl.textContent = defects || 0;
+            if (inputEl) inputEl.textContent = input;
+            if (outputEl) outputEl.textContent = output;
+            if (defectsEl) defectsEl.textContent = defects;
             if (dphuEl) dphuEl.textContent = dphu.toFixed(2) + '%';
             
             // Actualizar color del KPI
@@ -632,6 +589,8 @@
                 else if (dphu >= 5) dphuColorClass = 'warn';
                 kpiCard.classList.add(dphuColorClass);
             }
+            
+            this.console.log('🔄 [UI] KPIs actualizados para', date, ':', { input, output, defects, dphu: dphu.toFixed(2) });
         }
 
         /**
@@ -639,10 +598,17 @@
          */
         updateTotalSummaryCard() {
             const totalCard = document.getElementById('total-summary-card');
-            if (!totalCard || !window.currentFilteredData) return;
+            if (!totalCard) return;
+
+            // Usar los datos filtrados más actuales
+            const currentData = window.filteredData || window.currentFilteredData || [];
+            if (currentData.length === 0) {
+                this.console.warn('⚠️ [UI] No hay datos para calcular resumen total');
+                return;
+            }
 
             // Recalcular totales con datos actualizados
-            const dateGroups = window.currentFilteredData.reduce((acc, item) => {
+            const dateGroups = currentData.reduce((acc, item) => {
                 const date = this.formatDate(item.Date);
                 if (!date) return acc;
                 if (!acc[date]) {
@@ -654,7 +620,9 @@
                 return acc;
             }, {});
 
-            const totals = this.calculateTotalsWithManualData(dateGroups, window.currentFilteredData);
+            const totals = this.calculateTotalsWithManualData(dateGroups, currentData);
+            
+            this.console.log('🔄 [UI] Totales recalculados:', totals);
             
             // Actualizar elementos en la UI
             const inputEl = totalCard.querySelector('[data-total="input"]');
@@ -692,24 +660,30 @@
             ALL_PROCESSES.forEach(p => totals.processes[p] = 0);
             ALL_MANUAL_FIELDS.forEach(f => totals.manual[f] = 0);
 
+            this.console.log('🧮 [UI] Calculando totales para', Object.keys(dateGroups).length, 'días:', Object.keys(dateGroups));
+
             for(const date in dateGroups) {
-                const dailyApiData = this.getDailyApiTotals(date, data);
                 const manualData = window.MQS_STORAGE ? MQS_STORAGE.getManualData(date) : {};
                 
-                const input = manualData.INPUT !== undefined && manualData.INPUT !== '' ? parseInt(manualData.INPUT) : dailyApiData.input;
-                const output = manualData.Output !== undefined && manualData.Output !== '' ? parseInt(manualData.Output) : dailyApiData.output;
-                const defects = manualData.Defectos !== undefined && manualData.Defectos !== '' ? parseInt(manualData.Defectos) : dailyApiData.defects;
+                // Solo usar datos manuales si existen, sino mantener en 0
+                const input = (manualData.INPUT !== undefined && manualData.INPUT !== '') ? parseInt(manualData.INPUT) : 0;
+                const output = (manualData.Output !== undefined && manualData.Output !== '') ? parseInt(manualData.Output) : 0;
+                const defects = (manualData.Defectos !== undefined && manualData.Defectos !== '') ? parseInt(manualData.Defectos) : 0;
+                
+                this.console.log('🧮 [UI] Fecha', date, '- Input:', input, 'Output:', output, 'Defectos:', defects);
                 
                 totals.input += isNaN(input) ? 0 : input;
                 totals.output += isNaN(output) ? 0 : output;
                 totals.defects += isNaN(defects) ? 0 : defects;
                 
+                // Sumar datos de procesos de la API
                 for(const process in dateGroups[date].auto) {
                     if(totals.processes.hasOwnProperty(process)) {
                         totals.processes[process] += dateGroups[date].auto[process];
                     }
                 }
 
+                // Sumar datos manuales adicionales
                 for(const field in manualData) {
                     if(totals.manual.hasOwnProperty(field)) {
                         totals.manual[field] += parseInt(manualData[field]) || 0;
@@ -717,7 +691,9 @@
                 }
             }
 
-            totals.dphu = totals.defects === 0 ? 0 : (totals.input > 0 ? (totals.defects * 100 / totals.input) : 0);
+            totals.dphu = (totals.defects === 0 || totals.input === 0) ? 0 : (totals.defects * 100 / totals.input);
+            
+            this.console.log('🧮 [UI] Totales finales:', totals);
             return totals;
         }
 
