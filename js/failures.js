@@ -22,6 +22,13 @@
             this.console.log('💥 [FAILURES] Inicializando manejo de fallas...');
             this.loadFromStorage();
             this.setupEvents();
+            
+            // Crear modal de imagen si no existe
+            if (!document.getElementById('image-modal')) {
+                this.createImageModal();
+            }
+            
+            this.console.log('✅ [FAILURES] Manejo de fallas inicializado con modal de imagen');
         }
 
         /**
@@ -695,147 +702,66 @@
         }
 
         /**
-         * Muestra modal de imagen
+         * Muestra modal de imagen - USANDO UTILIDADES
          */
         showImageModal(imageSrc) {
-            if (window.MQS_UI) {
-                MQS_UI.showImageModal(imageSrc);
-            } else {
-                // Fallback básico
-                const modal = document.getElementById('image-modal');
-                const modalImage = document.getElementById('modal-image');
-                if (modal && modalImage) {
-                    modalImage.src = imageSrc;
-                    modal.style.display = 'flex';
-                }
-            }
-        }
-
-        /**
-         * Muestra notificación
-         */
-        showNotification(message, type) {
-            if (window.showNotification) {
-                showNotification(message, type);
-            } else {
-                console.log(`[FAILURES] ${type.toUpperCase()}: ${message}`);
-            }
-        }
-
-        /**
-         * Obtiene notas de falla
-         */
-        getFailureNotes() {
-            return this.failureNotes;
-        }
-
-        /**
-         * Obtiene imágenes de falla
-         */
-        getFailureImages() {
-            return this.failureImages;
-        }
-
-        /**
-         * Configura el filtro de testcode para una tabla específica
-         */
-        setupTestcodeFilter(processName, allFailures) {
-            const filterInput = document.getElementById(`testcode-filter-${processName}`);
-            const clearButton = document.querySelector(`.clear-testcode-filter[data-process-name="${processName}"]`);
-            const table = document.getElementById(`failures-table-${processName}`);
+            this.console.log('📸 [FAILURES] Abriendo modal de imagen:', imageSrc);
             
-            if (!filterInput || !table) {
-                this.console.error('❌ [FAILURES] Elementos de filtro no encontrados para', processName);
-                return;
+            // Crear modal si no existe
+            let modal = document.getElementById('image-modal');
+            if (!modal) {
+                this.createImageModal();
+                modal = document.getElementById('image-modal');
             }
-
-            // Función para aplicar el filtro
-            const applyTestcodeFilter = () => {
-                const filterValue = filterInput.value.toLowerCase().trim();
-                const rows = table.querySelectorAll('tbody tr');
-                
-                rows.forEach(row => {
-                    const testcodeCell = row.querySelector('td:first-child');
-                    if (testcodeCell) {
-                        const testcode = testcodeCell.textContent.toLowerCase();
-                        if (!filterValue || testcode.includes(filterValue)) {
-                            row.style.display = '';
-                            row.classList.remove('hidden');
-                        } else {
-                            row.style.display = 'none';
-                            row.classList.add('hidden');
-                        }
-                    }
-                });
-                
-                // Mostrar mensaje si no hay resultados visibles
-                const visibleRows = table.querySelectorAll('tbody tr:not(.hidden)');
-                if (visibleRows.length === 0 && filterValue) {
-                    this.showNoResultsMessage(processName, filterValue);
-                } else {
-                    this.hideNoResultsMessage(processName);
-                }
-                
-                this.console.log(`💥 [FAILURES] Filtro aplicado en ${processName}: "${filterValue}" - ${visibleRows.length} resultados`);
-            };
-
-            // Evento de input con debounce
-            let debounceTimer;
-            filterInput.addEventListener('input', () => {
-                clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(applyTestcodeFilter, 300);
-            });
-
-            // Evento del botón limpiar
-            if (clearButton) {
-                clearButton.addEventListener('click', () => {
-                    filterInput.value = '';
-                    applyTestcodeFilter();
-                });
-            }
-
-            this.console.log(`✅ [FAILURES] Filtro de testcode configurado para ${processName}`);
-        }
-
-        /**
-         * Muestra mensaje de "no resultados" para una tabla específica
-         */
-        showNoResultsMessage(processName, filterValue) {
-            const table = document.getElementById(`failures-table-${processName}`);
-            if (!table) return;
-
-            // Remover mensaje anterior si existe
-            this.hideNoResultsMessage(processName);
-
-            const messageRow = document.createElement('tr');
-            messageRow.className = 'no-results-message';
-            messageRow.innerHTML = `
-                <td colspan="7" class="px-4 py-6 text-center text-gray-400">
-                    <div class="flex flex-col items-center space-y-2">
-                        <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 20.5a7.962 7.962 0 01-5.291-2.209M16.172 9.172a4 4 0 00-5.656 0M16.172 9.172L14 7m2.172 2.172L14 11.344"/>
-                        </svg>
-                        <span>No se encontraron testcodes que contengan "${filterValue}"</span>
-                        <button class="text-indigo-400 hover:text-indigo-300 text-sm" onclick="document.getElementById('testcode-filter-${processName}').value=''; document.getElementById('testcode-filter-${processName}').dispatchEvent(new Event('input'))">
-                            🔄 Limpiar filtro
-                        </button>
-                    </div>
-                </td>
-            `;
             
-            table.querySelector('tbody').appendChild(messageRow);
+            const modalImage = document.getElementById('modal-image');
+            
+            if (modal && modalImage) {
+                modalImage.src = imageSrc;
+                modal.style.display = 'block';
+                modal.classList.add('show');
+                
+                // Deshabilitar scroll usando utilidad
+                this.disableScroll();
+                
+                // Agregar evento para cerrar con Escape
+                document.addEventListener('keydown', this.handleModalKeydown);
+                
+                this.console.log('✅ [FAILURES] Modal de imagen abierto en pantalla completa');
+            } else {
+                this.console.error('❌ [FAILURES] Elementos del modal no encontrados');
+            }
         }
 
         /**
-         * Oculta mensaje de "no resultados" para una tabla específica
+         * Cierra el modal de imagen - USANDO UTILIDADES
          */
-        hideNoResultsMessage(processName) {
-            const table = document.getElementById(`failures-table-${processName}`);
-            if (!table) return;
+        closeImageModal() {
+            const modal = document.getElementById('image-modal');
+            
+            if (modal) {
+                modal.classList.remove('show');
+                
+                // Habilitar scroll usando utilidad
+                this.enableScroll();
+                
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
+                
+                // Remover event listener de teclado
+                document.removeEventListener('keydown', this.handleModalKeydown);
+                
+                this.console.log('✅ [FAILURES] Modal de imagen cerrado y scroll restaurado');
+            }
+        }
 
-            const messageRow = table.querySelector('.no-results-message');
-            if (messageRow) {
-                messageRow.remove();
+        /**
+         * Maneja eventos de teclado del modal
+         */
+        handleModalKeydown = (e) => {
+            if (e.key === 'Escape') {
+                this.closeImageModal();
             }
         }
     }
