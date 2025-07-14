@@ -533,10 +533,25 @@
         handleCardInput(e) {
             if (e.target.matches('.manual-input')) {
                 const card = e.target.closest('.daily-card');
-                if (!card) return;
+                if (!card) {
+                    this.console.error('❌ [UI] No se encontró tarjeta padre para el input');
+                    return;
+                }
 
                 const date = card.dataset.date;
                 const field = e.target.dataset.field;
+                
+                this.console.log('🔍 [UI] Procesando input manual:', { date, field, value: e.target.value });
+                
+                if (!date) {
+                    this.console.error('❌ [UI] Tarjeta sin atributo data-date:', card);
+                    return;
+                }
+                
+                if (!field) {
+                    this.console.error('❌ [UI] Input sin atributo data-field:', e.target);
+                    return;
+                }
                 
                 // Si el valor está vacío, tratarlo como 0
                 const value = e.target.value === '' ? '0' : e.target.value;
@@ -545,6 +560,8 @@
                 // Guardar en storage
                 if (window.MQS_STORAGE) {
                     MQS_STORAGE.saveManualData(date, field, value);
+                } else {
+                    this.console.error('❌ [UI] MQS_STORAGE no disponible');
                 }
                 
                 // Actualizar KPIs de la tarjeta

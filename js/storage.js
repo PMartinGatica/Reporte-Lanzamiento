@@ -37,7 +37,38 @@
                 // Cargar datos manuales con estructura por fecha
                 if (savedState) {
                     const parsedState = JSON.parse(savedState);
-                    this.manualData = parsedState.manualData || parsedState; // Compatibilidad con versiones anteriores
+                    
+                    // Migrar datos del formato anterior si es necesario
+                    if (parsedState.manualData) {
+                        // Verificar si los datos están en el formato anterior (fecha -> campos)
+                        // o en el nuevo formato (modelo -> fecha -> campos)
+                        const firstKey = Object.keys(parsedState.manualData)[0];
+                        if (firstKey && typeof parsedState.manualData[firstKey] === 'object') {
+                            const firstSubKey = Object.keys(parsedState.manualData[firstKey])[0];
+                            // Si el primer subobjeto tiene campos como INPUT, Output, etc., es formato anterior
+                            if (firstSubKey && ['INPUT', 'Output', 'Defectos', 'CQA1', 'RUNNING', 'CQA2'].includes(firstSubKey)) {
+                                // Formato anterior: fecha -> campos
+                                // Migrar a formato nuevo: modelo -> fecha -> campos
+                                this.console.log('🔄 [STORAGE] Migrando datos del formato anterior...');
+                                const oldData = parsedState.manualData;
+                                this.manualData = {};
+                                
+                                // Si hay un modelo guardado, usar ese; sino, crear entrada genérica
+                                const savedModel = parsedState.selectedModel || 'MIGRATED_DATA';
+                                this.manualData[savedModel] = oldData;
+                                
+                                this.console.log('✅ [STORAGE] Datos migrados para modelo:', savedModel);
+                            } else {
+                                // Formato nuevo: modelo -> fecha -> campos
+                                this.manualData = parsedState.manualData;
+                            }
+                        } else {
+                            this.manualData = parsedState.manualData;
+                        }
+                    } else {
+                        // Compatibilidad con versiones muy anteriores
+                        this.manualData = parsedState;
+                    }
                     
                     // Restaurar filtros guardados
                     this.savedFilters = {
@@ -104,10 +135,28 @@
          */
         saveManualData(date, field, value) {
             try {
-                if (!this.manualData[date]) {
-                    this.manualData[date] = {};
+                this.console.log('🔍 [STORAGE] Iniciando guardado de datos manuales:', { date, field, value });
+                
+                const model = this.getSelectedModel();
+                this.console.log('🔍 [STORAGE] Modelo seleccionado:', model);
+                
+                if (!model) {
+                    this.console.warn('⚠️ [STORAGE] No hay modelo seleccionado para guardar datos manuales');
+                    return;
                 }
-                this.manualData[date][field] = value;
+
+                // Estructura: modelo -> fecha -> campos
+                if (!this.manualData[model]) {
+                    this.manualData[model] = {};
+                    this.console.log('🔍 [STORAGE] Creado contenedor para modelo:', model);
+                }
+                if (!this.manualData[model][date]) {
+                    this.manualData[model][date] = {};
+                    this.console.log('🔍 [STORAGE] Creado contenedor para fecha:', date);
+                }
+                
+                this.manualData[model][date][field] = value;
+                this.console.log('🔍 [STORAGE] Datos antes de guardar:', JSON.stringify(this.manualData[model][date]));
                 
                 // Guardar estado completo
                 const stateToSave = {
@@ -119,9 +168,24 @@
                 };
                 
                 localStorage.setItem(MQS_CONFIG.STORAGE.KEYS.STATE, JSON.stringify(stateToSave));
-                this.console.log('💾 [STORAGE] Datos manuales guardados:', date, field, value);
+                this.console.log('💾 [STORAGE] Datos manuales guardados exitosamente:', model, date, field, value);
+                
+                // Verificar que se guardó correctamente
+                const verification = localStorage.getItem(MQS_CONFIG.STORAGE.KEYS.STATE);
+                if (verification) {
+                    const parsed = JSON.parse(verification);
+                    if (parsed.manualData && parsed.manualData[model] && parsed.manualData[model][date] && parsed.manualData[model][date][field] === value) {
+                        this.console.log('✅ [STORAGE] Verificación exitosa: datos guardados correctamente');
+                    } else {
+                        this.console.error('❌ [STORAGE] Error en verificación: los datos no se guardaron correctamente');
+                    }
+                } else {
+                    this.console.error('❌ [STORAGE] Error en verificación: no se pudo leer de localStorage');
+                }
+                
             } catch (error) {
                 this.console.error('❌ [STORAGE] Error al guardar datos manuales:', error);
+                this.console.error('❌ [STORAGE] Stack trace:', error.stack);
             }
         }
 
@@ -129,7 +193,35 @@
          * Obtiene datos manuales para una fecha específica
          */
         getManualData(date) {
-            return this.manualData[date] || {};
+            const model = this.getSelectedModel();
+            this.console.log('🔍 [STORAGE] Obteniendo datos manuales para:', { model, date });
+            
+            if (!model) {
+                this.console.warn('⚠️ [STORAGE] No hay modelo seleccionado para obtener datos manuales');
+                return {};
+            }
+            
+            const data = (this.manualData[model] && this.manualData[model][date]) ? this.manualData[model][date] : {};
+            this.console.log('🔍 [STORAGE] Datos encontrados:', JSON.stringify(data));
+            
+            // Mostrar estructura completa de manualData para debug
+            this.console.log('🔍 [STORAGE] Estructura completa manualData:', Object.keys(this.manualData));
+            if (this.manualData[model]) {
+                this.console.log('🔍 [STORAGE] Fechas disponibles para modelo', model, ':', Object.keys(this.manualData[model]));
+            }
+            
+            return data;
+        }
+
+        /**
+         * Obtiene todos los datos manuales de un modelo específico
+         */
+        getAllManualDataForModel(model = null) {
+            const targetModel = model || this.getSelectedModel();
+            if (!targetModel) {
+                return {};
+            }
+            return this.manualData[targetModel] || {};
         }
 
         /**
@@ -146,6 +238,33 @@
         getSelectedDate() {
             const dateFilter = document.getElementById('date-filter');
             return dateFilter ? dateFilter.value : '';
+        }
+
+        /**
+         * Obtiene el proceso seleccionado actualmente (método legacy)
+         */
+        getSelectedProcess() {
+            return '';
+        }
+
+        /**
+         * Obtiene los procesos seleccionados actualmente
+         */
+        getSelectedProcesses() {
+            try {
+                const checkboxes = document.querySelectorAll('.process-checkbox:checked');
+                return Array.from(checkboxes).map(cb => cb.value);
+            } catch (error) {
+                this.console.error('❌ [STORAGE] Error obteniendo procesos seleccionados:', error);
+                return [];
+            }
+        }
+
+        /**
+         * Obtiene el filtro de testcode actual
+         */
+        getTestcodeFilter() {
+            return '';
         }
 
         /**
@@ -322,10 +441,72 @@
                 this.console.error('❌ [STORAGE] Error al limpiar datos:', error);
             }
         }
+
+        /**
+         * Método de debug para mostrar el estado completo del localStorage
+         */
+        debugShowStorageState() {
+            try {
+                this.console.log('🐛 [DEBUG] === ESTADO COMPLETO DEL STORAGE ===');
+                this.console.log('🐛 [DEBUG] Modelo actual:', this.getSelectedModel());
+                this.console.log('🐛 [DEBUG] manualData estructura completa:', JSON.stringify(this.manualData, null, 2));
+                
+                const rawState = localStorage.getItem(MQS_CONFIG.STORAGE.KEYS.STATE);
+                if (rawState) {
+                    const parsed = JSON.parse(rawState);
+                    this.console.log('🐛 [DEBUG] localStorage raw:', JSON.stringify(parsed, null, 2));
+                } else {
+                    this.console.log('🐛 [DEBUG] localStorage está vacío');
+                }
+                
+                // Mostrar datos por modelo
+                for (const model in this.manualData) {
+                    this.console.log(`🐛 [DEBUG] Modelo ${model}:`, Object.keys(this.manualData[model]));
+                    for (const date in this.manualData[model]) {
+                        this.console.log(`🐛 [DEBUG] - Fecha ${date}:`, this.manualData[model][date]);
+                    }
+                }
+                this.console.log('🐛 [DEBUG] === FIN ESTADO STORAGE ===');
+            } catch (error) {
+                this.console.error('❌ [DEBUG] Error mostrando estado del storage:', error);
+            }
+        }
     }
 
     // Crear instancia global
     window.MQS_STORAGE = new StorageManager();
+    
+    // Agregar funciones de debug globales
+    window.debugStorage = function() {
+        if (window.MQS_STORAGE) {
+            window.MQS_STORAGE.debugShowStorageState();
+        } else {
+            console.error('MQS_STORAGE no disponible');
+        }
+    };
+    
+    window.debugManualData = function(model = null, date = null) {
+        if (!window.MQS_STORAGE) {
+            console.error('MQS_STORAGE no disponible');
+            return;
+        }
+        
+        const targetModel = model || window.MQS_STORAGE.getSelectedModel();
+        if (!targetModel) {
+            console.log('🐛 [DEBUG] No hay modelo seleccionado');
+            return;
+        }
+        
+        if (date) {
+            const data = window.MQS_STORAGE.getManualData(date);
+            console.log(`🐛 [DEBUG] Datos para ${targetModel} - ${date}:`, data);
+        } else {
+            const allData = window.MQS_STORAGE.getAllManualDataForModel(targetModel);
+            console.log(`🐛 [DEBUG] Todos los datos para ${targetModel}:`, allData);
+        }
+    };
+    
     console.log('✅ [STORAGE] Módulo de almacenamiento cargado exitosamente');
+    console.log('💡 [DEBUG] Funciones disponibles: debugStorage(), debugManualData(modelo, fecha)');
 
 })();
