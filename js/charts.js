@@ -83,10 +83,12 @@
             
             reportElement.innerHTML = `
                 <h3 class="text-xl font-bold text-white mb-4">${processName}</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 text-center">
+                <div class="grid grid-cols-1 sm:grid-cols-1 gap-4 mb-6 text-center">
                     <div class="bg-gray-700 p-3 rounded-lg"><p class="text-sm text-gray-400">FTY%</p><p class="text-3xl font-bold text-green-400" data-metric-fty-total="true">0.00%</p></div>
+                    <!-- TODO: Reactivar NTF% y DPHU% después
                     <div class="bg-gray-700 p-3 rounded-lg"><p class="text-sm text-gray-400">NTF%</p><p class="text-3xl font-bold text-yellow-400" data-metric-ntf-total="true">0.00%</p></div>
                     <div class="bg-gray-700 p-3 rounded-lg"><p class="text-sm text-gray-400">DPHU%</p><p class="text-3xl font-bold text-red-400" data-metric-dphu-total="true">0.00%</p></div>
+                    -->
                 </div>
                 <div class="relative h-96"><canvas data-chart="${processName}"></canvas></div>
                 <div class="failures-table-container mt-6"></div>
@@ -101,42 +103,63 @@
             const canvas = reportElement.querySelector(`[data-chart="${processName}"]`);
             if (!canvas) return;
             
-            let totalHandle = 0, totalPass = 0, totalNTF = 0, totalDefect = 0;
-            processData.forEach(item => {
-                totalHandle += parseInt(item['Prime Handle']) || 0;
-                totalPass += parseInt(item['Prime Pass']) || 0;
-                totalNTF += parseInt(item['Prime NTF Count']) || 0;
-                totalDefect += parseInt(item['Prime Defect Count']) || 0;
-            });
-            
-            const totalFty = totalHandle > 0 ? (totalPass * 100 / totalHandle) : 0;
-            const totalNtfPercent = totalHandle > 0 ? (totalNTF * 100 / totalHandle) : 0;
-            const totalDphuPercent = totalHandle > 0 ? (totalDefect * 100 / totalHandle) : 0;
-            
-            reportElement.querySelector('[data-metric-fty-total]').textContent = `${totalFty.toFixed(2)}%`;
-            reportElement.querySelector('[data-metric-ntf-total]').textContent = `${totalNtfPercent.toFixed(2)}%`;
-            reportElement.querySelector('[data-metric-dphu-total]').textContent = `${totalDphuPercent.toFixed(2)}%`;
-
-            const groupedData = processData.reduce((acc, item) => {
+            // Agrupar datos por fecha para cálculo correcto
+            const groupedByDate = processData.reduce((acc, item) => {
                 const date = this.formatDate(item.Date);
                 if (!date) return acc;
-                acc[date] = acc[date] || { primeHandle: 0, primePass: 0, primeFail: 0 };
-                acc[date].primeHandle += parseInt(item['Prime Handle']) || 0;
-                acc[date].primePass += parseInt(item['Prime Pass']) || 0;
-                acc[date].primeFail += parseInt(item['Prime Fail']) || 0;
+                
+                if (!acc[date]) {
+                    acc[date] = { handle: 0, pass: 0, ntf: 0, defect: 0, fail: 0 };
+                }
+                
+                acc[date].handle += parseInt(item['Prime Handle']) || 0;
+                acc[date].pass += parseInt(item['Prime Pass']) || 0;
+                acc[date].ntf += parseInt(item['Prime NTF Count']) || 0;
+                acc[date].defect += parseInt(item['Prime Defect Count']) || 0;
+                acc[date].fail += parseInt(item['Prime Fail']) || 0;
+                
                 return acc;
-            }, {});
+            }, {            });
             
-            const sortedDates = Object.keys(groupedData).sort();
+            // Para las métricas principales, usar el valor de la ÚLTIMA FECHA (más reciente) del gráfico
+            // no el promedio total, para que coincida con lo que ve el usuario en el gráfico
+            const metricsDatesSorted = Object.keys(groupedByDate).sort();
+            const latestDate = metricsDatesSorted[metricsDatesSorted.length - 1]; // Última fecha
+            
+            let latestFty = 0, latestNtfPercent = 0, latestDphuPercent = 0;
+            if (latestDate && groupedByDate[latestDate]) {
+                const latestData = groupedByDate[latestDate];
+                latestFty = latestData.handle > 0 ? (latestData.pass * 100 / latestData.handle) : 0;
+                latestNtfPercent = latestData.handle > 0 ? (latestData.ntf * 100 / latestData.handle) : 0;
+                latestDphuPercent = latestData.handle > 0 ? (latestData.defect * 100 / latestData.handle) : 0;
+            }
+            
+            this.console.log('📊 [CHARTS] Métricas de ÚLTIMA FECHA para', processName, ':', {
+                fechas: Object.keys(groupedByDate),
+                ultimaFecha: latestDate,
+                datosUltimaFecha: groupedByDate[latestDate],
+                FTY_ultimaFecha: latestFty.toFixed(2) + '%',
+                NTF_ultimaFecha: latestNtfPercent.toFixed(2) + '%',
+                DPHU_ultimaFecha: latestDphuPercent.toFixed(2) + '%'
+            });
+            
+            // Actualizar elementos en la UI con los valores de la ÚLTIMA FECHA
+            reportElement.querySelector('[data-metric-fty-total]').textContent = `${latestFty.toFixed(2)}%`;
+            // TODO: Reactivar después
+            // reportElement.querySelector('[data-metric-ntf-total]').textContent = `${latestNtfPercent.toFixed(2)}%`;
+            // reportElement.querySelector('[data-metric-dphu-total]').textContent = `${latestDphuPercent.toFixed(2)}%`;
+
+            // Para el gráfico, usar datos agrupados por fecha
+            const sortedDates = Object.keys(groupedByDate).sort();
             
             const tooltipData = sortedDates.map(date => {
-                const dayData = groupedData[date];
+                const dayData = groupedByDate[date];
                 return {
                     date: new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'long' }),
-                    handle: dayData.primeHandle,
-                    pass: dayData.primePass,
-                    fail: dayData.primeFail,
-                    fty: dayData.primeHandle > 0 ? (dayData.primePass * 100 / dayData.primeHandle) : 0,
+                    handle: dayData.handle,
+                    pass: dayData.pass,
+                    fail: dayData.fail,
+                    fty: dayData.handle > 0 ? (dayData.pass * 100 / dayData.handle) : 0,
                 };
             });
             
@@ -298,6 +321,90 @@
                         <tbody>${rowsHTML}</tbody>
                     </table>
                 </div>`;
+        }
+
+        /**
+         * Actualiza las métricas de todos los procesos basadas en datos manuales
+         */
+        updateProcessMetrics() {
+            if (!window.filteredData || window.filteredData.length === 0) {
+                this.console.warn('⚠️ [CHARTS] No hay datos filtrados para actualizar métricas');
+                return;
+            }
+
+            // Obtener todos los procesos únicos
+            const processGroups = window.filteredData.reduce((groups, item) => {
+                const process = item.Process;
+                if (!groups[process]) groups[process] = [];
+                groups[process].push(item);
+                return groups;
+            }, {});
+
+            // Actualizar métricas para cada proceso
+            Object.keys(processGroups).forEach(processName => {
+                const reportElement = document.querySelector(`[data-process="${processName}"]`);
+                if (!reportElement) return;
+
+                const processData = processGroups[processName];
+                
+                // Agrupar datos por fecha para cálculo correcto
+                const groupedByDate = processData.reduce((acc, item) => {
+                    const date = this.formatDate(item.Date);
+                    if (!date) return acc;
+                    
+                    if (!acc[date]) {
+                        acc[date] = { handle: 0, pass: 0, ntf: 0, defect: 0 };
+                    }
+                    
+                    acc[date].handle += parseInt(item['Prime Handle']) || 0;
+                    acc[date].pass += parseInt(item['Prime Pass']) || 0;
+                    acc[date].ntf += parseInt(item['Prime NTF Count']) || 0;
+                    acc[date].defect += parseInt(item['Prime Defect Count']) || 0;
+                    
+                    return acc;
+                }, {});
+                
+                // Calcular totales acumulados correctos
+                let totalHandle = 0, totalPass = 0, totalNTF = 0, totalDefect = 0;
+                Object.values(groupedByDate).forEach(dayData => {
+                    totalHandle += dayData.handle;
+                    totalPass += dayData.pass;
+                    totalNTF += dayData.ntf;
+                    totalDefect += dayData.defect;
+                });
+                
+                // Para las métricas, usar el valor de la ÚLTIMA FECHA del gráfico para consistencia
+                const updateDatesSorted = Object.keys(groupedByDate).sort();
+                const updateLatestDate = updateDatesSorted[updateDatesSorted.length - 1];
+                
+                let updateLatestFty = 0, updateLatestNtfPercent = 0, updateLatestDphuPercent = 0;
+                if (updateLatestDate && groupedByDate[updateLatestDate]) {
+                    const updateLatestData = groupedByDate[updateLatestDate];
+                    updateLatestFty = updateLatestData.handle > 0 ? (updateLatestData.pass * 100 / updateLatestData.handle) : 0;
+                    updateLatestNtfPercent = updateLatestData.handle > 0 ? (updateLatestData.ntf * 100 / updateLatestData.handle) : 0;
+                    updateLatestDphuPercent = updateLatestData.handle > 0 ? (updateLatestData.defect * 100 / updateLatestData.handle) : 0;
+                }
+                
+                // Actualizar elementos en la UI con valores de ÚLTIMA FECHA
+                const ftyElement = reportElement.querySelector('[data-metric-fty-total]');
+                // TODO: Reactivar después
+                // const ntfElement = reportElement.querySelector('[data-metric-ntf-total]');
+                // const dphuElement = reportElement.querySelector('[data-metric-dphu-total]');
+                
+                if (ftyElement) ftyElement.textContent = `${updateLatestFty.toFixed(2)}%`;
+                // TODO: Reactivar después
+                // if (ntfElement) ntfElement.textContent = `${updateLatestNtfPercent.toFixed(2)}%`;
+                // if (dphuElement) dphuElement.textContent = `${updateLatestDphuPercent.toFixed(2)}%`;
+                
+                this.console.log('📊 [CHARTS] Métricas actualizadas para', processName, ':', {
+                    fechas: Object.keys(groupedByDate),
+                    totalHandle: totalHandle,
+                    totalPass: totalPass,
+                    FTY: totalFty.toFixed(2) + '%',
+                    NTF: totalNtfPercent.toFixed(2) + '%',
+                    DPHU: totalDphuPercent.toFixed(2) + '%'
+                });
+            });
         }
 
         /**

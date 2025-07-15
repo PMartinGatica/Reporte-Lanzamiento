@@ -570,6 +570,11 @@
                 // Actualizar tarjeta de resumen total
                 this.updateTotalSummaryCard();
                 
+                // Actualizar métricas de procesos (FTY%, NTF%, DPHU%)
+                if (window.MQS_CHARTS) {
+                    MQS_CHARTS.updateProcessMetrics();
+                }
+                
                 this.console.log('🎨 [UI] Datos manuales actualizados:', date, field, value);
             }
         }
@@ -873,6 +878,13 @@
             
             this.renderCards(data);
             this.setupCardEvents();
+            
+            // Actualizar métricas de procesos después de renderizar tarjetas
+            setTimeout(() => {
+                if (window.MQS_CHARTS) {
+                    MQS_CHARTS.updateProcessMetrics();
+                }
+            }, 100); // Pequeño delay para asegurar que las tarjetas estén renderizadas
         }
 
         /**
@@ -885,6 +897,13 @@
             
             if (window.MQS_CHARTS && typeof window.MQS_CHARTS.createProcessReports === 'function') {
                 window.MQS_CHARTS.createProcessReports(data);
+                
+                // Actualizar métricas después de crear los reportes
+                setTimeout(() => {
+                    if (window.MQS_CHARTS && typeof window.MQS_CHARTS.updateProcessMetrics === 'function') {
+                        window.MQS_CHARTS.updateProcessMetrics();
+                    }
+                }, 200); // Delay para asegurar que los reportes estén renderizados
             } else {
                 this.console.warn('⚠️ [UI] MQS_CHARTS no disponible para actualizar análisis de procesos');
             }
