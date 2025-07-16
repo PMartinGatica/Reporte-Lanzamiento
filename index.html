@@ -199,6 +199,34 @@
                     </div>
                     
                     <div class="p-6">
+                        <!-- Filtros de la tabla -->
+                        <div class="mb-4 flex justify-end">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-sm text-gray-300 font-medium">Filtrar por Estado:</span>
+                                <div class="flex items-center space-x-4 bg-gray-700 px-4 py-2 rounded-lg border border-gray-600">
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" id="status-abierto" value="abierto" class="status-filter-checkbox rounded border-gray-500 bg-gray-600 text-indigo-600 focus:ring-indigo-500 focus:ring-2">
+                                        <span class="text-sm text-white">� Abierto</span>
+                                    </label>
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" id="status-en-progreso" value="en-progreso" class="status-filter-checkbox rounded border-gray-500 bg-gray-600 text-indigo-600 focus:ring-indigo-500 focus:ring-2">
+                                        <span class="text-sm text-white">🔄 En Progreso</span>
+                                    </label>
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" id="status-completado" value="completado" class="status-filter-checkbox rounded border-gray-500 bg-gray-600 text-indigo-600 focus:ring-indigo-500 focus:ring-2">
+                                        <span class="text-sm text-white">✅ Completado</span>
+                                    </label>
+                                    <button id="clear-status-filter" class="text-xs text-gray-400 hover:text-white transition-colors ml-2 px-2 py-1 rounded border border-gray-600 hover:border-gray-500">
+                                        Limpiar
+                                    </button>
+                                </div>
+                                <!-- Indicador de filtros activos -->
+                                <div id="status-filter-indicator" class="hidden bg-indigo-600 text-white px-2 py-1 rounded-full text-xs font-medium">
+                                    <span id="status-filter-count">0</span> filtro(s)
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm text-left" id="objectives-table">
                                 <thead class="text-xs text-gray-300 uppercase bg-gray-700">

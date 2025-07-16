@@ -8,6 +8,7 @@
             this.console = window.console;
             this.objectives = [];
             this.nextId = 1;
+            this.selectedStatusFilters = []; // Array de estados seleccionados
             
             this.console.log('🎯 [OBJECTIVES] ObjectivesManager inicializado');
         }
@@ -59,6 +60,42 @@
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') this.hideModal();
             });
+
+            // Event listeners para filtros de estado (checkboxes múltiples)
+            const statusCheckboxes = document.querySelectorAll('.status-filter-checkbox');
+            statusCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const value = e.target.value;
+                    if (e.target.checked) {
+                        // Agregar estado al filtro
+                        if (!this.selectedStatusFilters.includes(value)) {
+                            this.selectedStatusFilters.push(value);
+                        }
+                    } else {
+                        // Remover estado del filtro
+                        this.selectedStatusFilters = this.selectedStatusFilters.filter(status => status !== value);
+                    }
+                    
+                    this.updateFilterIndicator();
+                    this.renderObjectives();
+                    this.console.log('🔍 [OBJECTIVES] Filtros de estado actualizados:', this.selectedStatusFilters);
+                });
+            });
+
+            // Botón para limpiar filtros
+            const clearFilterBtn = document.getElementById('clear-status-filter');
+            if (clearFilterBtn) {
+                clearFilterBtn.addEventListener('click', () => {
+                    // Desmarcar todos los checkboxes
+                    statusCheckboxes.forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                    this.selectedStatusFilters = [];
+                    this.updateFilterIndicator();
+                    this.renderObjectives();
+                    this.console.log('🧹 [OBJECTIVES] Filtros de estado limpiados');
+                });
+            }
 
             this.console.log('🎯 [OBJECTIVES] Event listeners configurados');
         }
@@ -194,19 +231,52 @@
                 return;
             }
 
-            if (this.objectives.length === 0) {
+            // Aplicar filtro por estados múltiples
+            let filteredObjectives = this.objectives;
+            if (this.selectedStatusFilters.length > 0) {
+                filteredObjectives = this.objectives.filter(objective => 
+                    this.selectedStatusFilters.includes(objective.status)
+                );
+                this.console.log('🔍 [OBJECTIVES] Aplicando filtros de estado:', this.selectedStatusFilters, 'Resultados:', filteredObjectives.length);
+            }
+
+            if (filteredObjectives.length === 0) {
                 tbody.innerHTML = '';
                 if (noObjectivesMessage) noObjectivesMessage.classList.remove('hidden');
                 if (objectivesCount) objectivesCount.textContent = '0';
+                
+                // Mostrar mensaje específico si hay objetivos pero no coinciden con el filtro
+                if (this.objectives.length > 0 && this.selectedStatusFilters.length > 0) {
+                    const selectedStatesText = this.selectedStatusFilters.map(status => {
+                        const statusMap = {
+                            'abierto': '📋 Abierto',
+                            'en-progreso': '🔄 En Progreso', 
+                            'completado': '✅ Completado'
+                        };
+                        return statusMap[status] || status;
+                    }).join(', ');
+                    
+                    const noResultsMessage = `
+                        <div class="text-center py-12">
+                            <svg class="mx-auto h-12 w-12 text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <p class="text-gray-400 text-lg font-medium">No se encontraron objetivos</p>
+                            <p class="text-gray-500 text-sm mt-2">No hay objetivos con los estados: ${selectedStatesText}</p>
+                        </div>
+                    `;
+                    tbody.innerHTML = `<tr><td colspan="4">${noResultsMessage}</td></tr>`;
+                    if (noObjectivesMessage) noObjectivesMessage.classList.add('hidden');
+                }
                 return;
             }
 
             if (noObjectivesMessage) noObjectivesMessage.classList.add('hidden');
-            if (objectivesCount) objectivesCount.textContent = this.objectives.length;
+            if (objectivesCount) objectivesCount.textContent = filteredObjectives.length;
 
-            tbody.innerHTML = this.objectives.map(objective => this.createObjectiveRow(objective)).join('');
+            tbody.innerHTML = filteredObjectives.map(objective => this.createObjectiveRow(objective)).join('');
 
-            this.console.log('🎯 [OBJECTIVES] Objetivos renderizados:', this.objectives.length);
+            this.console.log('🎯 [OBJECTIVES] Objetivos renderizados:', filteredObjectives.length, 'de', this.objectives.length, 'total');
         }
 
         /**
@@ -325,6 +395,25 @@
                         this.console.log('🔄 [OBJECTIVES] Objetivos sincronizados con modelo:', selectedModel);
                     }
                 });
+            }
+        }
+
+        /**
+         * Actualiza el indicador visual de filtros activos
+         */
+        updateFilterIndicator() {
+            const indicator = document.getElementById('status-filter-indicator');
+            const countElement = document.getElementById('status-filter-count');
+            
+            if (!indicator || !countElement) return;
+            
+            const activeFiltersCount = this.selectedStatusFilters.length;
+            
+            if (activeFiltersCount > 0) {
+                indicator.classList.remove('hidden');
+                countElement.textContent = activeFiltersCount;
+            } else {
+                indicator.classList.add('hidden');
             }
         }
 

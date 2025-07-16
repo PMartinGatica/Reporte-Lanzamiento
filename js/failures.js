@@ -189,7 +189,6 @@
                                                    id="testcode-${processName}-${testcode}" 
                                                    value="${testcode}" 
                                                    class="testcode-checkbox w-4 h-4 text-indigo-600 bg-gray-700 border-gray-600 rounded focus:ring-indigo-500 focus:ring-2" 
-                                                   checked
                                                    data-process-name="${processName}">
                                             <label for="testcode-${processName}-${testcode}" 
                                                    class="text-white text-xs cursor-pointer select-none truncate">${testcode}</label>
@@ -242,7 +241,24 @@
             // Toggle del dropdown
             dropdownBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                const isHidden = dropdown.classList.contains('hidden');
                 dropdown.classList.toggle('hidden');
+                
+                this.console.log(`🔄 [FAILURES] Dropdown ${processName} ${isHidden ? 'abierto' : 'cerrado'}`);
+                
+                // Si se abre el dropdown, mostrar estado actual
+                if (isHidden) {
+                    const totalCheckboxes = dropdown.querySelectorAll('.testcode-checkbox').length;
+                    const checkedBoxes = dropdown.querySelectorAll('.testcode-checkbox:checked').length;
+                    this.console.log(`📊 [FAILURES] Estado actual del dropdown ${processName}:`, {
+                        total: totalCheckboxes,
+                        seleccionados: checkedBoxes,
+                        checkboxes: Array.from(dropdown.querySelectorAll('.testcode-checkbox')).map(cb => ({
+                            value: cb.value,
+                            checked: cb.checked
+                        }))
+                    });
+                }
             });
 
             // Prevenir cierre del dropdown al hacer click dentro
@@ -259,8 +275,15 @@
                     const checkboxes = dropdown.querySelectorAll('.testcode-checkbox');
                     const allChecked = Array.from(checkboxes).every(cb => cb.checked);
                     
-                    checkboxes.forEach(cb => cb.checked = !allChecked);
-                    selectAllBtn.textContent = allChecked ? 'Todos' : 'Ninguno';
+                    if (allChecked) {
+                        // Si todos están seleccionados, deseleccionar todos
+                        checkboxes.forEach(cb => cb.checked = false);
+                        selectAllBtn.textContent = 'Todos';
+                    } else {
+                        // Si no todos están seleccionados, seleccionar todos
+                        checkboxes.forEach(cb => cb.checked = true);
+                        selectAllBtn.textContent = 'Ninguno';
+                    }
                     
                     this.applyTestcodeFilter(processName);
                     this.updateDropdownLabel(processName);
@@ -288,6 +311,12 @@
             // Eventos de cambio en checkboxes
             dropdown.addEventListener('change', (e) => {
                 if (e.target.classList.contains('testcode-checkbox')) {
+                    this.console.log(`📋 [FAILURES] Checkbox cambiado en ${processName}:`, {
+                        testcode: e.target.value,
+                        checked: e.target.checked,
+                        totalChecked: dropdown.querySelectorAll('.testcode-checkbox:checked').length
+                    });
+                    
                     this.applyTestcodeFilter(processName);
                     this.updateDropdownLabel(processName);
                     this.saveTestcodeFilters(processName);
@@ -307,23 +336,40 @@
             const dropdown = document.getElementById(`testcode-dropdown-${processName}`);
             const table = document.getElementById(`failures-table-${processName}`);
             
-            if (!dropdown || !table) return;
+            if (!dropdown || !table) {
+                this.console.error(`❌ [FAILURES] Elementos no encontrados para aplicar filtro: dropdown=${!!dropdown}, table=${!!table}`);
+                return;
+            }
 
             const selectedTestcodes = Array.from(dropdown.querySelectorAll('.testcode-checkbox:checked'))
                 .map(cb => cb.value);
+
+            this.console.log(`🔍 [FAILURES] Aplicando filtro en ${processName}:`, {
+                totalCheckboxes: dropdown.querySelectorAll('.testcode-checkbox').length,
+                selectedTestcodes: selectedTestcodes,
+                dropdownVisible: !dropdown.classList.contains('hidden')
+            });
 
             const rows = table.querySelectorAll('tbody tr');
             let visibleCount = 0;
 
             rows.forEach(row => {
                 const testcode = row.dataset.testcode;
-                if (selectedTestcodes.length === 0 || selectedTestcodes.includes(testcode)) {
+                // Cambiar lógica: solo mostrar si hay testcodes seleccionados Y el testcode está incluido
+                const shouldShow = selectedTestcodes.length > 0 && selectedTestcodes.includes(testcode);
+                
+                if (shouldShow) {
                     row.style.display = '';
                     row.classList.remove('hidden');
                     visibleCount++;
                 } else {
                     row.style.display = 'none';
                     row.classList.add('hidden');
+                }
+                
+                // Log para debugging
+                if (selectedTestcodes.length > 0) {
+                    this.console.log(`  - Fila ${testcode}: mostrar=${shouldShow}`);
                 }
             });
 
@@ -334,7 +380,7 @@
                 this.hideNoTestcodeResults(processName);
             }
 
-            this.console.log(`💥 [FAILURES] Filtro aplicado en ${processName}: ${selectedTestcodes.length} testcodes seleccionados, ${visibleCount} resultados visibles`);
+            this.console.log(`✅ [FAILURES] Filtro aplicado en ${processName}: ${selectedTestcodes.length} testcodes seleccionados, ${visibleCount} de ${rows.length} filas visibles`);
         }
 
         /**
@@ -354,7 +400,7 @@
             } else if (checkedBoxes.length === checkboxes.length) {
                 label.textContent = 'Todos';
             } else {
-                label.textContent = `${checkedBoxes.length} seleccionados`;
+                label.textContent = `${checkedBoxes.length} de ${checkboxes.length}`;
             }
         }
 
@@ -381,7 +427,14 @@
             if (!window.MQS_STORAGE) return;
 
             const savedFilters = MQS_STORAGE.getProcessTestCodeFilters(processName);
-            if (!savedFilters || savedFilters.length === 0) return;
+            
+            // Si no hay filtros guardados, dejar todo deseleccionado (comportamiento por defecto)
+            if (!savedFilters || savedFilters.length === 0) {
+                this.console.log(`📂 [FAILURES] No hay filtros guardados para ${processName}, iniciando con ninguno seleccionado`);
+                this.applyTestcodeFilter(processName);
+                this.updateDropdownLabel(processName);
+                return;
+            }
 
             const dropdown = document.getElementById(`testcode-dropdown-${processName}`);
             if (!dropdown) return;
@@ -399,8 +452,8 @@
             // Aplicar filtro y actualizar UI
             this.applyTestcodeFilter(processName);
             this.updateDropdownLabel(processName);
-
-            this.console.log(`🔄 [FAILURES] Filtros de testcode restaurados para ${processName}:`, savedFilters);
+            
+            this.console.log(`📂 [FAILURES] Filtros restaurados para ${processName}:`, savedFilters);
         }
 
         /**
@@ -764,6 +817,47 @@
                 this.closeImageModal();
             }
         }
+
+        /**
+         * Función de debug para probar filtros manualmente
+         */
+        debugTestcodeFilter(processName, testcodesToShow = []) {
+            this.console.log(`🐛 [FAILURES] DEBUG: Aplicando filtro manual para ${processName}`, testcodesToShow);
+            
+            const dropdown = document.getElementById(`testcode-dropdown-${processName}`);
+            if (!dropdown) {
+                this.console.error(`❌ [FAILURES] DEBUG: Dropdown no encontrado para ${processName}`);
+                return;
+            }
+            
+            // Deseleccionar todos
+            const checkboxes = dropdown.querySelectorAll('.testcode-checkbox');
+            checkboxes.forEach(cb => cb.checked = false);
+            
+            // Seleccionar solo los especificados
+            if (testcodesToShow.length > 0) {
+                testcodesToShow.forEach(testcode => {
+                    const checkbox = dropdown.querySelector(`input[value="${testcode}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        this.console.log(`✅ [FAILURES] DEBUG: Checkbox ${testcode} seleccionado`);
+                    } else {
+                        this.console.warn(`⚠️ [FAILURES] DEBUG: Checkbox ${testcode} no encontrado`);
+                    }
+                });
+            } else {
+                // Si no se especifica nada, seleccionar todos
+                checkboxes.forEach(cb => cb.checked = true);
+            }
+            
+            // Aplicar filtro
+            this.applyTestcodeFilter(processName);
+            this.updateDropdownLabel(processName);
+            this.saveTestcodeFilters(processName);
+            
+            this.console.log(`🐛 [FAILURES] DEBUG: Filtro aplicado para ${processName}`);
+        }
+
     }
 
     // Crear instancia global
